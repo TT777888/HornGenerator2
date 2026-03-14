@@ -2,9 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Bright Horn Generator - Solid & Free Look</title>
+    <title>Bright Horn Generator - Natural Branches</title>
     <style>
-        body { margin: 0; font-family: sans-serif; background: #1a1f26; color: #eee; overflow: hidden; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #1a1f26; color: #eee; overflow: hidden; }
         #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
         .panel { 
             background: rgba(25, 30, 40, 0.95); 
@@ -13,14 +13,13 @@
             z-index: 10;
             overflow-y: auto;
         }
-        h1 { margin: 0 0 20px 0; font-size: 20px; letter-spacing: 2px; color: #e7d9c8; border-bottom: 1px solid #555; padding-bottom: 10px; }
-        .field { margin-bottom: 20px; }
-        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #bbb; }
+        h1 { margin: 0 0 20px 0; font-size: 18px; letter-spacing: 2px; color: #e7d9c8; border-bottom: 1px solid #555; padding-bottom: 10px; }
+        .field { margin-bottom: 22px; }
+        label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; color: #bbb; }
         input[type=range] { width: 100%; cursor: pointer; accent-color: #e7d9c8; }
-        input[type=color] { width: 100%; height: 35px; border: 1px solid #555; background: none; cursor: pointer; border-radius: 4px; }
+        input[type=color] { width: 100%; height: 32px; border: 1px solid #555; background: none; cursor: pointer; border-radius: 4px; }
         #viewer { width: 100%; height: 100%; position: relative; }
-        .hint { font-size: 11px; color: #888; margin-top: 15px; line-height: 1.5; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; }
-        .axes-label { position: absolute; bottom: 10px; right: 10px; color: #888; font-size: 12px; pointer-events: none; }
+        .axes-label { position: absolute; bottom: 10px; right: 10px; color: #888; font-size: 11px; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -47,11 +46,6 @@
         <div class="field">
             <label>色 (Base Color)</label>
             <input id="color" type="color" value="#ffffff">
-        </div>
-        <div class="hint">
-            ・全方位360度回転可能<br>
-            ・軸表示: 赤(X) 緑(Y) 青(Z)<br>
-            ・衝突を避けるアルゴリズムを適用済み
         </div>
     </div>
     <div id="viewer">
@@ -85,26 +79,24 @@ camera.position.set(5, 5, 8);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.useLegacyLights = false; // 高輝度な照明計算
+renderer.useLegacyLights = false; 
 renderer.toneMapping = THREE.ReinhardToneMapping;
-renderer.toneMappingExposure = 1.5; // 全体の明るさを底上げ
+renderer.toneMappingExposure = 1.6; // さらに明るく
 viewer.appendChild(renderer.domElement);
 
-// --- 軸ヘルパー (XYZ座標) ---
+// --- 軸ヘルパー ---
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
 
 // --- Controls ---
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.1;
 controls.zoomSpeed = 2.0;
-// 回転制限を解除
 controls.minPolarAngle = 0; 
-controls.maxPolarAngle = Math.PI; 
+controls.maxPolarAngle = Math.PI; // 360度回転
 
 // --- 明るいライティング ---
-scene.add(new THREE.AmbientLight(0xffffff, 1.2)); // 環境光を大幅アップ
+scene.add(new THREE.AmbientLight(0xffffff, 1.3)); 
 
 const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
 mainLight.position.set(10, 15, 10);
@@ -135,9 +127,10 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
 
     for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        let taper = Math.pow(1 - t, 0.9);
-        if(isBranch && t < 0.1) taper *= (1.2 - t); 
-        const bump = 1 + Math.sin(t * 30) * (params.texture * 0.12) * (1 - t);
+        // 先端をより鋭く (0.9 -> 0.95)
+        let taper = Math.pow(1 - t, 0.95);
+        if(isBranch && t < 0.1) taper *= (1.1 - t); 
+        const bump = 1 + Math.sin(t * 30) * (params.texture * 0.1) * (1 - t);
         const r = Math.max(0.001, baseRadius * taper * bump); 
 
         const p = curve.getPointAt(t);
@@ -183,9 +176,10 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
 
     const mat = new THREE.MeshPhysicalMaterial({
         color: params.color,
-        roughness: 0.4, // 少しツヤを出す
-        metalness: 0.1,
-        side: THREE.DoubleSide
+        roughness: 0.45, // マット感を維持しつつツヤ
+        metalness: 0.05,
+        side: THREE.DoubleSide,
+        flatShading: false
     });
 
     return new THREE.Mesh(geo, mat);
@@ -210,39 +204,40 @@ function build() {
         new THREE.Vector3(B * 1.5, L, 0)
     ]);
 
-    const mainRadius = 0.25 * (L/10 + 0.7);
+    // メインの太さを調整（少し細身に）
+    const mainRadius = 0.22 * (L/10 + 0.7);
     hornGroup.add(createTaperedHorn(mainCurve, mainRadius));
 
-    const frames = mainCurve.computeFrenetFrames(100, false);
-
-    // 分岐の生成（衝突回避ロジック）
+    // 分岐の生成（自然な結合と短縮）
     for (let i = 0; i < params.branches; i++) {
         const seed = i + L + B;
-        const t = 0.2 + pseudoRandom(seed) * 0.6;
+        // 分岐位置を 0.3 〜 0.8 の間に限定
+        const t = 0.3 + pseudoRandom(seed) * 0.5;
         const startP = mainCurve.getPointAt(t);
-        const fIdx = Math.floor(t * 100);
         
-        // メインの曲がり方向（法線）を基準に、外側へ分岐させることで衝突を回避
-        const normal = frames.normals[fIdx];
-        const binormal = frames.binormals[fIdx];
+        // メインの角の傾き（接線）を取得
+        const tangent = mainCurve.getTangentAt(t).normalize();
         
-        // 付け根を少し埋める
-        const deepStartP = startP.clone().add(normal.clone().multiplyScalar(-mainRadius * 0.3));
+        // 付け根をメインのボディの「中」に完全に固定
+        // これで「訳分からんところから生える」のを防ぐ
+        const deepStartP = startP.clone().add(tangent.clone().multiplyScalar(-0.1));
 
-        // 分岐の軌道を「外側かつ少し上」へ逃がす
+        // 分岐の軌道を「短く、かつメインに寄り添う」ように再設計
+        // B（曲がり）の影響を抑え、自然な枝分かれに
         const branchCurve = new THREE.CatmullRomCurve3([
             deepStartP,
-            startP.clone().add(normal.clone().multiplyScalar(1.5 + B * 0.5)).add(new THREE.Vector3(0, L * 0.1, 0)),
-            startP.clone().add(normal.clone().multiplyScalar(2.5 + B)).add(binormal.clone().multiplyScalar((pseudoRandom(seed)-0.5)*2))
+            startP.clone().add(tangent.clone().multiplyScalar(L * 0.15)).add(new THREE.Vector3(0.3, L * 0.1, 0)),
+            startP.clone().add(tangent.clone().multiplyScalar(L * 0.3)).add(new THREE.Vector3(0.5, L * 0.2, (pseudoRandom(seed+1)-0.5)*0.5))
         ]);
 
-        hornGroup.add(createTaperedHorn(branchCurve, mainRadius * 0.4, true));
+        // 分岐はメインの半分の太さ
+        hornGroup.add(createTaperedHorn(branchCurve, mainRadius * 0.5, true));
     }
 
     // 重心調整
     hornGroup.position.y = -(L * 0.45);
     hornGroup.position.x = -(B * 0.5); 
-    controls.target.set(0, 0, 0); // 常に中心を向く
+    controls.target.set(0, 0, 0); 
 }
 
 const ids = ['size', 'bend', 'texture', 'branches'];
