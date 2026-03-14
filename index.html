@@ -2,349 +2,522 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Horn Generator</title>
-
 <style>
+* { box-sizing: border-box; }
 
 body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
-background:#0c1016;
-color:#111;
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;
+  background:radial-gradient(circle at 20% 10%, #1c2430 0%, #0f141c 45%, #0a0d12 100%);
+  color:#111;
+  overflow:hidden;
 }
 
 #app{
-display:grid;
-grid-template-columns:320px 1fr;
-height:100vh;
+  display:grid;
+  grid-template-columns:320px 1fr;
+  height:100vh;
 }
 
 .panel{
-background:rgba(255,255,255,0.75);
-backdrop-filter:blur(20px);
-padding:20px;
+  margin:18px;
+  padding:20px;
+  border-radius:24px;
+  background:rgba(255,255,255,0.78);
+  backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,0.55);
 }
 
 h1{
-margin:0 0 10px 0;
-font-size:24px;
+  margin:0 0 8px 0;
+  font-size:24px;
+}
+
+.sub{
+  margin:0 0 18px 0;
+  font-size:13px;
+  color:#6b7280;
+  line-height:1.5;
 }
 
 .field{
-margin-bottom:16px;
+  margin-bottom:16px;
 }
 
 label{
-display:flex;
-justify-content:space-between;
-font-size:14px;
-margin-bottom:6px;
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin-bottom:6px;
+  font-weight:600;
+}
+
+label span{
+  color:#6b7280;
 }
 
 input[type=range]{
-width:100%;
+  width:100%;
 }
 
 input[type=color]{
-width:100%;
-height:36px;
+  width:100%;
+  height:38px;
+  border:none;
+  background:transparent;
 }
 
 #viewer{
-width:100%;
-height:100%;
+  width:100%;
+  height:100%;
 }
 
 canvas{
-width:100%;
-height:100%;
-display:block;
+  width:100%;
+  height:100%;
+  display:block;
 }
 
+@media (max-width:900px){
+  #app{
+    grid-template-columns:1fr;
+    grid-template-rows:auto 1fr;
+  }
+
+  .panel{
+    margin:12px 12px 0 12px;
+  }
+}
 </style>
 </head>
-
 <body>
 
 <div id="app">
+  <div class="panel">
+    <h1>Horn Generator</h1>
+    <div class="sub">もっと角らしい、強く湾曲した分岐ツノ。</div>
 
-<div class="panel">
+    <div class="field">
+      <label>大きさ <span id="sizeV">5.0</span></label>
+      <input id="size" type="range" min="2" max="9" step="0.1" value="5.0">
+    </div>
 
-<h1>Horn Generator</h1>
+    <div class="field">
+      <label>曲り <span id="bendV">1.40</span></label>
+      <input id="bend" type="range" min="0.4" max="2.8" step="0.01" value="1.40">
+    </div>
 
-<div class="field">
-<label>大きさ <span id="sizeV">5</span></label>
-<input id="size" type="range" min="2" max="9" step="0.1" value="5">
-</div>
+    <div class="field">
+      <label>節 <span id="textureV">0.55</span></label>
+      <input id="texture" type="range" min="0" max="1" step="0.01" value="0.55">
+    </div>
 
-<div class="field">
-<label>曲り <span id="bendV">1</span></label>
-<input id="bend" type="range" min="0.2" max="2" step="0.01" value="1">
-</div>
+    <div class="field">
+      <label>分岐 <span id="branchesV">3</span></label>
+      <input id="branches" type="range" min="1" max="5" step="1" value="3">
+    </div>
 
-<div class="field">
-<label>節 <span id="textureV">0.2</span></label>
-<input id="texture" type="range" min="0" max="1" step="0.01" value="0.2">
-</div>
+    <div class="field">
+      <label>色</label>
+      <input id="color" type="color" value="#ffffff">
+    </div>
+  </div>
 
-<div class="field">
-<label>分岐 <span id="branchesV">3</span></label>
-<input id="branches" type="range" min="1" max="5" step="1" value="3">
-</div>
-
-<div class="field">
-<label>色</label>
-<input id="color" type="color" value="#e7d9c8">
-</div>
-
-</div>
-
-<div id="viewer"></div>
-
+  <div id="viewer"></div>
 </div>
 
 <script type="importmap">
 {
-"imports":{
-"three":"https://unpkg.com/three@0.160.0/build/three.module.js"
-}
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
 }
 </script>
 
 <script type="module">
+import * as THREE from "three";
 
-import * as THREE from "three"
+const viewer = document.getElementById("viewer");
 
-const viewer=document.getElementById("viewer")
+const params = {
+  size: 5.0,
+  bend: 1.4,
+  texture: 0.55,
+  branches: 3,
+  color: "#ffffff"
+};
 
-const params={
-size:5,
-bend:1,
-texture:0.2,
-branches:3,
-color:"#e7d9c8"
+const defaults = { ...params };
+
+const ui = {
+  size: document.getElementById("size"),
+  bend: document.getElementById("bend"),
+  texture: document.getElementById("texture"),
+  branches: document.getElementById("branches"),
+  color: document.getElementById("color"),
+  sizeV: document.getElementById("sizeV"),
+  bendV: document.getElementById("bendV"),
+  textureV: document.getElementById("textureV"),
+  branchesV: document.getElementById("branchesV")
+};
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(
+  40,
+  Math.max(1, viewer.clientWidth) / Math.max(1, viewer.clientHeight),
+  0.1,
+  100
+);
+camera.position.set(0, 2.6, 9.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(Math.max(1, viewer.clientWidth), Math.max(1, viewer.clientHeight));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+viewer.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+
+const light1 = new THREE.DirectionalLight(0xffffff, 2.2);
+light1.position.set(5, 7, 5);
+scene.add(light1);
+
+const light2 = new THREE.DirectionalLight(0xdde8ff, 0.7);
+light2.position.set(-4, 4, -3);
+scene.add(light2);
+
+const light3 = new THREE.DirectionalLight(0xfff2ea, 0.6);
+light3.position.set(0, 5, -7);
+scene.add(light3);
+
+const back = new THREE.Mesh(
+  new THREE.PlaneGeometry(24, 24),
+  new THREE.MeshBasicMaterial({
+    color: 0x13202a,
+    transparent: true,
+    opacity: 0.18
+  })
+);
+back.position.set(0, 4, -8);
+scene.add(back);
+
+let hornGroup = new THREE.Group();
+scene.add(hornGroup);
+
+function updateLabels() {
+  ui.sizeV.textContent = Number(params.size).toFixed(1);
+  ui.bendV.textContent = Number(params.bend).toFixed(2);
+  ui.textureV.textContent = Number(params.texture).toFixed(2);
+  ui.branchesV.textContent = params.branches;
 }
 
-const scene=new THREE.Scene()
-
-const camera=new THREE.PerspectiveCamera(
-40,
-viewer.clientWidth/viewer.clientHeight,
-0.1,
-100
-)
-
-camera.position.set(0,2.5,9)
-
-const renderer=new THREE.WebGLRenderer({antialias:true})
-
-renderer.setSize(viewer.clientWidth,viewer.clientHeight)
-
-viewer.appendChild(renderer.domElement)
-
-scene.add(new THREE.AmbientLight(0xffffff,1.4))
-
-const light=new THREE.DirectionalLight(0xffffff,2)
-light.position.set(5,7,5)
-scene.add(light)
-
-let hornGroup=new THREE.Group()
-scene.add(hornGroup)
-
-function plastic(color){
-
-return new THREE.MeshPhysicalMaterial({
-
-color:color,
-roughness:0.25,
-clearcoat:0.4,
-clearcoatRoughness:0.2
-
-})
-
+function plasticMaterial(color) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.22,
+    metalness: 0.0,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.18,
+    sheen: 0.12,
+    sheenRoughness: 0.35,
+    reflectivity: 0.38,
+    ior: 1.46
+  });
 }
 
-function lerp(a,b,t){
-
-return a+(b-a)*t
-
+function clearGroup(group) {
+  while (group.children.length > 0) {
+    const child = group.children[0];
+    group.remove(child);
+    child.traverse?.((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+  }
 }
 
-function tube(curve,opt){
-
-const geo=new THREE.TubeGeometry(curve,80,opt.r1,24,false)
-
-return new THREE.Mesh(geo,plastic(opt.color))
-
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
-function mainCurve(){
-
-const L=params.size
-const B=params.bend
-
-return new THREE.CatmullRomCurve3([
-
-new THREE.Vector3(0,0,0),
-new THREE.Vector3(B*0.2,L*0.3,0),
-new THREE.Vector3(B*0.5,L*0.6,0.1),
-new THREE.Vector3(B*0.7,L,0)
-
-])
-
+function smoothTipRadius(baseRadius, t) {
+  // かなり細くしつつ、最後だけ少し丸める
+  const sharp = Math.pow(1 - t, 1.65);
+  const tinyRoundedTip = 0.006 + 0.012 * Math.pow(Math.max(0, (t - 0.92) / 0.08), 2);
+  return Math.max(baseRadius * sharp, tinyRoundedTip);
 }
 
-function branchCurve(base,i){
+function buildHornMeshFromCurve(curve, options) {
+  const {
+    baseRadius,
+    texture,
+    color,
+    radialSegments = 26,
+    heightSegments = 110
+  } = options;
 
-const p=base.getPointAt(0.3+0.2*i)
+  const frames = curve.computeFrenetFrames(heightSegments, false);
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
 
-return new THREE.CatmullRomCurve3([
+  const ridgeCount = Math.round(6 + texture * 16);
+  const ridgeStrength = 0.02 + texture * 0.13;
 
-p,
-p.clone().add(new THREE.Vector3(0.3+i*0.1,0.8,0)),
-p.clone().add(new THREE.Vector3(0.5+i*0.2,1.4,0))
+  for (let i = 0; i <= heightSegments; i++) {
+    const t = i / heightSegments;
+    const center = curve.getPointAt(t);
+    const normal = frames.normals[i];
+    const binormal = frames.binormals[i];
 
-])
+    let radius = smoothTipRadius(baseRadius, t);
 
+    const largeRidge = Math.sin(t * Math.PI * ridgeCount * 2.0);
+    const smallRidge = Math.sin(t * Math.PI * ridgeCount * 6.0) * 0.35;
+    radius *= 1 + largeRidge * ridgeStrength + smallRidge * ridgeStrength * 0.35;
+
+    radius = Math.max(radius, 0.004);
+
+    for (let j = 0; j <= radialSegments; j++) {
+      const v = j / radialSegments;
+      const angle = v * Math.PI * 2;
+
+      // 少し縦長断面にして角感を出す
+      const x = Math.cos(angle) * radius * 0.92;
+      const y = Math.sin(angle) * radius * 1.08;
+
+      const vertex = new THREE.Vector3()
+        .copy(center)
+        .addScaledVector(normal, x)
+        .addScaledVector(binormal, y);
+
+      positions.push(vertex.x, vertex.y, vertex.z);
+
+      const n = new THREE.Vector3()
+        .addScaledVector(normal, x)
+        .addScaledVector(binormal, y)
+        .normalize();
+
+      normals.push(n.x, n.y, n.z);
+      uvs.push(v, t);
+    }
+  }
+
+  for (let i = 0; i < heightSegments; i++) {
+    for (let j = 0; j < radialSegments; j++) {
+      const a = i * (radialSegments + 1) + j;
+      const b = a + radialSegments + 1;
+      const c = b + 1;
+      const d = a + 1;
+      indices.push(a, b, d, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setIndex(indices);
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+
+  return new THREE.Mesh(geometry, plasticMaterial(color));
 }
 
-function build(){
+function createMainCurve() {
+  const L = params.size;
+  const B = params.bend;
 
-scene.remove(hornGroup)
-
-hornGroup=new THREE.Group()
-
-const main=mainCurve()
-
-hornGroup.add(tube(main,{
-r1:0.17*(params.size/5),
-color:params.color
-}))
-
-for(let i=0;i<params.branches;i++){
-
-hornGroup.add(tube(branchCurve(main,i),{
-
-r1:0.07*(params.size/5),
-color:params.color
-
-}))
-
+  // もっと強く反り返る主軸
+  return new THREE.CatmullRomCurve3(
+    [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(B * 0.14, L * 0.14, -0.02),
+      new THREE.Vector3(B * 0.34, L * 0.34, 0.04),
+      new THREE.Vector3(B * 0.58, L * 0.58, 0.10),
+      new THREE.Vector3(B * 0.82, L * 0.84, 0.06),
+      new THREE.Vector3(B * 0.94, L * 1.06, -0.02)
+    ],
+    false,
+    "catmullrom",
+    0.52
+  );
 }
 
-hornGroup.position.y=-0.5
-
-scene.add(hornGroup)
-
+function getFrameAt(curve, t) {
+  const point = curve.getPointAt(t);
+  const tangent = curve.getTangentAt(t).normalize();
+  const frames = curve.computeFrenetFrames(120, false);
+  const idx = Math.min(120, Math.floor(t * 120));
+  return {
+    point,
+    tangent,
+    normal: frames.normals[idx],
+    binormal: frames.binormals[idx]
+  };
 }
 
-build()
+function createBranchCurve(mainCurve, index, total) {
+  const t = total === 1 ? 0.40 : 0.24 + index * (0.46 / (total - 1));
+  const { point, tangent, normal, binormal } = getFrameAt(mainCurve, t);
 
-function update(){
+  const len = params.size * (0.24 + index * 0.065);
+  const side = 0.34 + index * 0.13;
+  const up = new THREE.Vector3(0, 1, 0);
 
-build()
+  // 上向きに鋭く立ち上げる
+  const dir = new THREE.Vector3()
+    .copy(tangent)
+    .multiplyScalar(0.18)
+    .addScaledVector(normal, side * 0.82)
+    .addScaledVector(binormal, 0.03 * (index % 2 === 0 ? 1 : -1))
+    .addScaledVector(up, 1.18)
+    .normalize();
 
+  const p0 = point.clone();
+  const p1 = point.clone().add(dir.clone().multiplyScalar(len * 0.18));
+  const p2 = point.clone().add(dir.clone().multiplyScalar(len * 0.56));
+  const p3 = point.clone().add(dir.clone().multiplyScalar(len));
+
+  p1.x += side * 0.06;
+  p2.x += side * 0.16;
+  p3.x += side * 0.22;
+
+  return new THREE.CatmullRomCurve3([p0, p1, p2, p3], false, "catmullrom", 0.48);
 }
 
-size.oninput=e=>{
+function buildAntler() {
+  const group = new THREE.Group();
 
-params.size=+e.target.value
-sizeV.innerText=params.size.toFixed(1)
-update()
+  const mainCurve = createMainCurve();
+  const main = buildHornMeshFromCurve(mainCurve, {
+    baseRadius: 0.19 * (params.size / 5),
+    texture: params.texture,
+    color: params.color,
+    radialSegments: 28,
+    heightSegments: 120
+  });
+  group.add(main);
 
+  for (let i = 0; i < params.branches; i++) {
+    const branchCurve = createBranchCurve(mainCurve, i, params.branches);
+    const branch = buildHornMeshFromCurve(branchCurve, {
+      baseRadius: Math.max(0.035, 0.082 * (params.size / 5) * (1 - i * 0.08)),
+      texture: params.texture * 0.85,
+      color: params.color,
+      radialSegments: 18,
+      heightSegments: 58
+    });
+    group.add(branch);
+  }
+
+  group.position.y = -0.55;
+  group.rotation.z = -0.12;
+  return group;
 }
 
-bend.oninput=e=>{
-
-params.bend=+e.target.value
-bendV.innerText=params.bend.toFixed(2)
-update()
-
+function rebuild() {
+  scene.remove(hornGroup);
+  clearGroup(hornGroup);
+  hornGroup = buildAntler();
+  scene.add(hornGroup);
 }
 
-texture.oninput=e=>{
+ui.size.addEventListener("input", (e) => {
+  params.size = Number(e.target.value);
+  updateLabels();
+  rebuild();
+});
 
-params.texture=+e.target.value
-textureV.innerText=params.texture.toFixed(2)
-update()
+ui.bend.addEventListener("input", (e) => {
+  params.bend = Number(e.target.value);
+  updateLabels();
+  rebuild();
+});
 
+ui.texture.addEventListener("input", (e) => {
+  params.texture = Number(e.target.value);
+  updateLabels();
+  rebuild();
+});
+
+ui.branches.addEventListener("input", (e) => {
+  params.branches = Number(e.target.value);
+  updateLabels();
+  rebuild();
+});
+
+ui.color.addEventListener("input", (e) => {
+  params.color = e.target.value;
+  rebuild();
+});
+
+let dragging = false;
+let lastX = 0;
+let lastY = 0;
+let targetRotY = -0.38;
+let targetRotX = 0.10;
+let zoomTarget = camera.position.z;
+
+viewer.addEventListener("pointerdown", (e) => {
+  dragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+
+window.addEventListener("pointerup", () => {
+  dragging = false;
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+
+  targetRotY += dx * 0.008;
+  targetRotX += dy * 0.0045;
+  targetRotX = Math.max(-0.45, Math.min(0.45, targetRotX));
+});
+
+viewer.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  zoomTarget += e.deltaY * 0.01;
+  zoomTarget = Math.max(6.0, Math.min(13.0, zoomTarget));
+}, { passive: false });
+
+updateLabels();
+rebuild();
+
+window.addEventListener("resize", () => {
+  const w = Math.max(1, viewer.clientWidth);
+  const h = Math.max(1, viewer.clientHeight);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  hornGroup.rotation.y += (targetRotY - hornGroup.rotation.y) * 0.10;
+  hornGroup.rotation.x += (targetRotX - hornGroup.rotation.x) * 0.10;
+  camera.position.z += (zoomTarget - camera.position.z) * 0.08;
+  camera.lookAt(0, 2.2, 0);
+
+  renderer.render(scene, camera);
 }
 
-branches.oninput=e=>{
-
-params.branches=+e.target.value
-branchesV.innerText=params.branches
-update()
-
-}
-
-color.oninput=e=>{
-
-params.color=e.target.value
-update()
-
-}
-
-let drag=false
-let lastX=0
-let lastY=0
-
-let targetX=0
-let targetY=0
-
-viewer.onpointerdown=e=>{
-
-drag=true
-lastX=e.clientX
-lastY=e.clientY
-
-}
-
-window.onpointerup=()=>{
-
-drag=false
-
-}
-
-window.onpointermove=e=>{
-
-if(!drag)return
-
-const dx=e.clientX-lastX
-const dy=e.clientY-lastY
-
-lastX=e.clientX
-lastY=e.clientY
-
-targetY+=dx*0.01
-targetX+=dy*0.01
-
-}
-
-viewer.onwheel=e=>{
-
-camera.position.z+=e.deltaY*0.01
-camera.position.z=Math.max(5,Math.min(14,camera.position.z))
-
-}
-
-function animate(){
-
-requestAnimationFrame(animate)
-
-hornGroup.rotation.y+=
-(targetY-hornGroup.rotation.y)*0.1
-
-hornGroup.rotation.x+=
-(targetX-hornGroup.rotation.x)*0.1
-
-renderer.render(scene,camera)
-
-}
-
-animate()
-
+animate();
 </script>
-
 </body>
 </html>
