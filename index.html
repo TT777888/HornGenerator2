@@ -2,61 +2,61 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Smooth Bio-Tube Horn Generator</title>
+    <title>Refined Bio-Horn Generator</title>
     <style>
-        :root { --accent: #c5a880; --bg: #0d1117; --panel: #161b22; }
-        body { margin: 0; font-family: 'Saws-serif', sans-serif; background: var(--bg); color: #fff; overflow: hidden; }
+        :root { --accent: #f0f0f0; --bg: #121418; --panel: #1c1f26; }
+        body { margin: 0; font-family: 'Helvetica Neue', sans-serif; background: var(--bg); color: #eee; overflow: hidden; }
         #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
         
         .panel { 
             background: var(--panel); 
             padding: 25px; 
-            border-right: 1px solid #30363d;
+            border-right: 1px solid #333;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 20px;
         }
-        h1 { font-size: 1rem; letter-spacing: 3px; color: var(--accent); border-bottom: 1px solid #30363d; padding-bottom: 10px; margin: 0; }
-        .control-group { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid #30363d; }
-        label { font-size: 0.75rem; color: #8b949e; display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .level-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: #484f58; margin-top: 5px; }
+        h1 { font-size: 1rem; letter-spacing: 2px; color: var(--accent); border-bottom: 1px solid #444; padding-bottom: 10px; margin: 0; }
+        .control-group { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        label { font-size: 0.75rem; color: #999; display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .level-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: #555; margin-top: 5px; }
         
-        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
-        input[type=color] { width: 100%; height: 35px; border: 1px solid #30363d; background: none; cursor: pointer; border-radius: 4px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #ddd; }
+        input[type=color] { width: 100%; height: 35px; border: 1px solid #333; background: none; cursor: pointer; border-radius: 4px; }
         
         button#generate { 
-            padding: 15px; background: var(--accent); color: #0d1117; border: none; 
+            padding: 15px; background: #eee; color: #111; border: none; 
             border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s;
         }
-        button#generate:hover { background: #dcc29d; transform: translateY(-1px); }
+        button#generate:hover { background: #fff; transform: translateY(-1px); }
 
         #viewer { width: 100%; height: 100%; position: relative; }
-        .hud { position: absolute; bottom: 20px; right: 20px; text-align: right; color: #484f58; font-size: 0.7rem; pointer-events: none; }
+        .hud { position: absolute; bottom: 20px; right: 20px; text-align: right; color: #555; font-size: 0.7rem; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div class="panel">
-        <h1>SMOOTH HORN</h1>
+        <h1>HORN GEN v6</h1>
         
         <div class="control-group">
             <label>長さ (SIZE) <b id="val-size">3</b></label>
             <input id="size" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>MIN</span><span>MID</span><span>MAX</span></div>
+            <div class="level-labels"><span>SHORT</span><span>NORMAL</span><span>LONG</span></div>
         </div>
 
         <div class="control-group">
-            <label>強烈な曲がり (CURVE) <b id="val-bend">3</b></label>
+            <label>曲がり (CURVE) <b id="val-bend">3</b></label>
             <input id="bend" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>GENTLE</span><span>WILD</span><span>SPIRAL</span></div>
+            <div class="level-labels"><span>STRAIGHT</span><span>NORMAL</span><span>CURVED</span></div>
         </div>
 
         <div class="control-group">
-            <label>表面のうねり (WAVE) <b id="val-texture">3</b></label>
+            <label>表面の凹凸 (BUMP) <b id="val-texture">3</b></label>
             <input id="texture" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>SILK</span><span>ORGANIC</span><span>VEIN</span></div>
+            <div class="level-labels"><span>SMOOTH</span><span>NATURAL</span><span>ROUGH</span></div>
         </div>
 
         <div class="control-group">
@@ -67,14 +67,14 @@
 
         <div class="control-group">
             <label>基本色</label>
-            <input id="color" type="color" value="#a68b6a">
+            <input id="color" type="color" value="#ffffff">
         </div>
 
-        <button id="generate">個体DNAを再生成</button>
+        <button id="generate">DNAを再生成 (形状の個体差)</button>
     </div>
 
     <div id="viewer">
-        <div class="hud">SMOOTH TUBE ENGINE v5<br>PROCEDURAL SPLINE INTERPOLATION</div>
+        <div class="hud">SMOOTH TUBE ENGINE v6<br>NON-INTERFERING BRANCH LOGIC</div>
     </div>
 </div>
 
@@ -92,23 +92,22 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const viewer = document.getElementById("viewer");
-let settings = { size: 3, bend: 3, texture: 3, branches: 1, color: "#a68b6a" };
+let settings = { size: 3, bend: 3, texture: 3, branches: 1, color: "#ffffff" };
 let currentDNA = generateDNA();
 
 function generateDNA() {
     return {
-        seedX: Math.random() * 10,
-        seedZ: Math.random() * 10,
-        spiralFactor: (Math.random() - 0.5) * 2,
-        wobble: Math.random()
+        seedX: Math.random() * 5,
+        seedZ: Math.random() * 5,
+        noiseMap: Array.from({length: 120}, () => Math.random()), // 凹凸用の乱数配列
+        branchVariance: Math.random() * 2
     };
 }
 
-// --- Scene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d1117);
+scene.background = new THREE.Color(0x121418);
 const camera = new THREE.PerspectiveCamera(40, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
-camera.position.set(12, 10, 15);
+camera.position.set(10, 8, 12);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
@@ -120,67 +119,73 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 // Lights
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const topLight = new THREE.SpotLight(0xffffff, 200);
-topLight.position.set(10, 20, 10);
-scene.add(topLight);
-const rimLight = new THREE.PointLight(0xffffff, 100);
-rimLight.position.set(-10, -5, -10);
-scene.add(rimLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const light1 = new THREE.DirectionalLight(0xffffff, 1.5);
+light1.position.set(5, 10, 5);
+scene.add(light1);
+const light2 = new THREE.DirectionalLight(0xffffff, 0.8);
+light2.position.set(-5, 2, -5);
+scene.add(light2);
 
 const hornGroup = new THREE.Group();
 scene.add(hornGroup);
 
-// --- Smooth Tube Logic ---
-function createSmoothHorn(isBranch = false, startPos = new THREE.Vector3(), customScale = 1.0) {
+function createHorn(isBranch = false, startPos = new THREE.Vector3(), customScale = 1.0, branchId = 0) {
     const points = [];
-    const segments = 100;
-    const sizeLvl = settings.size;
-    const bendLvl = settings.bend;
-    const waveLvl = settings.texture;
+    const segments = 80;
     
-    const length = sizeLvl * 1.8 * customScale;
-    const bendStrength = bendLvl * 0.8;
+    // 5段階調整（以前の中央値を最大値に）
+    const length = settings.size * 1.2 * customScale;
+    const bendVal = settings.bend * 0.3; // 曲がりすぎを抑制
+    const bumpVal = settings.texture * 0.04;
 
-    // 1. 背骨（スプライン曲線）の生成
+    // 1. 背骨の生成
     for (let i = 0; i <= 10; i++) {
         const t = i / 10;
-        const x = Math.sin(t * Math.PI * (bendLvl * 0.4) + currentDNA.seedX) * bendStrength * t;
-        const y = t * length;
-        const z = Math.cos(t * Math.PI * (bendLvl * 0.4) + currentDNA.seedZ) * bendStrength * t;
+        let x, z;
         
-        const p = new THREE.Vector3(x, y, z);
+        if (!isBranch) {
+            x = Math.sin(t * Math.PI * 0.5 + currentDNA.seedX) * bendVal * t * 2;
+            z = Math.cos(t * Math.PI * 0.5 + currentDNA.seedZ) * bendVal * t * 2;
+        } else {
+            // 分岐はメインより曲がりを緩やかに(0.4倍)、かつ外側に広がるように
+            const angle = (branchId / settings.branches) * Math.PI * 2 + currentDNA.branchVariance;
+            x = Math.cos(angle) * (t * 1.5); 
+            z = Math.sin(angle) * (t * 1.5);
+            x += Math.sin(t * Math.PI * 0.2) * (bendVal * 0.4);
+        }
+        
+        const p = new THREE.Vector3(x, t * length, z);
         if (isBranch) p.add(startPos);
         points.push(p);
     }
     const curve = new THREE.CatmullRomCurve3(points);
 
-    // 2. カスタム半径（テーパーと表面のうねり）
-    const baseRadius = (isBranch ? 0.2 : 0.5) * (sizeLvl * 0.15 + 0.6);
+    // 2. チューブ生成
+    const baseRadius = (isBranch ? 0.15 : 0.4) * (settings.size * 0.1 + 0.8);
+    const geometry = new THREE.TubeGeometry(curve, segments, baseRadius, 24, false);
     
-    const geometry = new THREE.TubeGeometry(curve, segments, baseRadius, 20, false);
-    
-    // 半径を位置によって変えるために頂点を操作
+    // 3. 表面の凹凸加工 (リアルな大小の差)
     const vertices = geometry.attributes.position;
     const tubePoints = geometry.parameters.path.getPoints(segments);
-    const normals = geometry.binormals; // TubeGeometryはbinormals等を持っている
 
     for (let i = 0; i < vertices.count; i++) {
         const tIdx = Math.floor(i / (geometry.parameters.radialSegments + 1));
         const t = tIdx / segments;
         
-        // テーパー（先端を細く）
-        const taper = Math.pow(1 - t, 0.9);
-        // 表面の滑らかなうねり
-        const wave = 1 + Math.sin(t * 20 + currentDNA.wobble * 5) * (waveLvl * 0.03);
+        // テーパー
+        const taper = Math.pow(1 - t, 0.85);
         
-        // 頂点の再配置（中心からの距離を調整）
+        // 連続する輪切りの大小差を激しくする (DNAの乱数を使用)
+        const noise = currentDNA.noiseMap[tIdx] || 0.5;
+        const bump = 1 + (Math.sin(t * 30) * 0.5 + (noise - 0.5)) * bumpVal * (1-t);
+        
         const vertex = new THREE.Vector3().fromBufferAttribute(vertices, i);
         const center = tubePoints[tIdx];
         const dir = new THREE.Vector3().subVectors(vertex, center).normalize();
         
-        const newRadius = baseRadius * taper * wave;
-        vertex.copy(center).add(dir.multiplyScalar(newRadius));
+        const r = Math.max(0.01, baseRadius * taper * bump);
+        vertex.copy(center).add(dir.multiplyScalar(r));
         vertices.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
     
@@ -188,9 +193,9 @@ function createSmoothHorn(isBranch = false, startPos = new THREE.Vector3(), cust
 
     const material = new THREE.MeshPhysicalMaterial({
         color: settings.color,
-        roughness: 0.35, // 滑らかさを強調
-        metalness: 0.1,
-        clearcoat: 0.2
+        roughness: 0.5,
+        metalness: 0.0,
+        flatShading: false
     });
 
     return { mesh: new THREE.Mesh(geometry, material), curve: curve };
@@ -204,14 +209,15 @@ function build() {
         hornGroup.remove(child);
     }
 
-    const main = createSmoothHorn();
+    const main = createHorn();
     hornGroup.add(main.mesh);
 
     const branchCount = settings.branches - 1;
     for (let i = 0; i < branchCount; i++) {
-        const t = 0.3 + (i * 0.15);
+        // 分岐位置
+        const t = 0.25 + (i * 0.15);
         const spawnPos = main.curve.getPointAt(t);
-        const branch = createSmoothHorn(true, spawnPos, 0.5);
+        const branch = createHorn(true, spawnPos, 0.5, i);
         hornGroup.add(branch.mesh);
     }
 
@@ -220,6 +226,7 @@ function build() {
     hornGroup.position.set(-center.x, -center.y, -center.z);
 }
 
+// UI
 ['size', 'bend', 'texture', 'branches'].forEach(id => {
     document.getElementById(id).oninput = (e) => {
         settings[id] = parseInt(e.target.value);
@@ -227,12 +234,10 @@ function build() {
         build();
     };
 });
-
 document.getElementById('color').oninput = (e) => {
     settings.color = e.target.value;
     build();
 };
-
 document.getElementById('generate').onclick = () => {
     currentDNA = generateDNA();
     build();
