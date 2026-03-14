@@ -8,8 +8,8 @@
     * { box-sizing: border-box; }
 
     :root {
-      --bg1: #0f1722;
-      --bg2: #0a0f16;
+      --bg1: #101923;
+      --bg2: #0a1017;
       --panel: rgba(255,255,255,0.72);
       --panel-border: rgba(255,255,255,0.5);
       --text: #111318;
@@ -26,7 +26,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
         "Helvetica Neue", "Hiragino Sans", "Yu Gothic", sans-serif;
       background:
-        radial-gradient(circle at 20% 10%, #1b2636 0%, var(--bg1) 35%, var(--bg2) 100%);
+        radial-gradient(circle at 20% 10%, #1d2938 0%, var(--bg1) 35%, var(--bg2) 100%);
       overflow: hidden;
     }
 
@@ -66,7 +66,7 @@
     }
 
     .card {
-      background: rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.52);
       border: 1px solid rgba(255,255,255,0.45);
       border-radius: 22px;
       padding: 10px 14px;
@@ -146,11 +146,6 @@
     #viewer {
       position: relative;
       min-width: 0;
-      cursor: grab;
-    }
-
-    #viewer.dragging {
-      cursor: grabbing;
     }
 
     canvas {
@@ -179,7 +174,7 @@
   <div id="app">
     <aside class="panel">
       <h1>Horn Generator</h1>
-      <div class="sub">鹿角っぽい、やわらかい分岐のツノを作る版です。</div>
+      <div class="sub">鹿角っぽい、やわらかい分岐のツノ。</div>
 
       <div class="card">
         <div class="field">
@@ -203,13 +198,13 @@
         </div>
 
         <div class="field">
-          <label for="texture">節・凹凸 <span id="textureValue">0.28</span></label>
-          <input type="range" id="texture" min="0" max="1" step="0.01" value="0.28" />
+          <label for="texture">節・凹凸 <span id="textureValue">0.20</span></label>
+          <input type="range" id="texture" min="0" max="1" step="0.01" value="0.20" />
         </div>
 
         <div class="field">
           <label for="color">色</label>
-          <input type="color" id="color" value="#d9c7ae" />
+          <input type="color" id="color" value="#e7d9c8" />
         </div>
       </div>
 
@@ -219,8 +214,8 @@
       </div>
 
       <div class="hint">
-        ドラッグで回転、ホイールでズーム。<br>
-        台座なし・タイプ選択なしです。
+        ドラッグで視点移動、ホイールでズーム。<br>
+        モデル自体は回転させていません。
       </div>
     </aside>
 
@@ -230,13 +225,15 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
   }
   </script>
 
   <script type="module">
     import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
     const viewer = document.getElementById("viewer");
 
@@ -245,8 +242,8 @@
       bend: 1.2,
       spread: 0.85,
       branches: 3,
-      texture: 0.28,
-      color: "#d9c7ae"
+      texture: 0.20,
+      color: "#e7d9c8"
     };
 
     const DEFAULTS = { ...params };
@@ -269,7 +266,7 @@
     };
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x0a0f16, 10, 24);
+    scene.fog = new THREE.Fog(0x0a1017, 10, 22);
 
     const camera = new THREE.PerspectiveCamera(
       38,
@@ -277,53 +274,46 @@
       0.1,
       100
     );
-    camera.position.set(0, 2.7, 9.5);
-    camera.lookAt(0, 2.4, 0);
+    camera.position.set(2.8, 3.1, 9.0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(Math.max(1, viewer.clientWidth), Math.max(1, viewer.clientHeight));
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     viewer.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.25));
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 5;
+    controls.maxDistance = 14;
+    controls.target.set(0, 2.6, 0);
+    controls.update();
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
-    keyLight.position.set(4, 7, 6);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.45));
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.3);
+    keyLight.position.set(5, 7, 6);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xd6e2ff, 0.7);
-    fillLight.position.set(-5, 4, -3);
+    const fillLight = new THREE.DirectionalLight(0xcad8ff, 0.65);
+    fillLight.position.set(-4, 3, -3);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffecd8, 0.55);
-    rimLight.position.set(0, 6, -7);
+    const rimLight = new THREE.DirectionalLight(0xffefe0, 0.7);
+    rimLight.position.set(0, 5, -7);
     scene.add(rimLight);
 
     const backPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(20, 20),
+      new THREE.PlaneGeometry(22, 22),
       new THREE.MeshBasicMaterial({
-        color: 0x10202a,
+        color: 0x11232d,
         transparent: true,
         opacity: 0.18
       })
     );
-    backPlane.position.set(0, 4, -6);
+    backPlane.position.set(0, 4, -7);
     scene.add(backPlane);
-
-    const softShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(2.2, 48),
-      new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.10
-      })
-    );
-    softShadow.rotation.x = -Math.PI / 2;
-    softShadow.position.y = -0.75;
-    scene.add(softShadow);
 
     let hornGroup = new THREE.Group();
     scene.add(hornGroup);
@@ -364,11 +354,17 @@
       return a + (b - a) * t;
     }
 
-    function hornMaterial(color) {
-      return new THREE.MeshStandardMaterial({
+    function plasticMaterial(color) {
+      return new THREE.MeshPhysicalMaterial({
         color,
-        roughness: 0.88,
-        metalness: 0.02
+        roughness: 0.28,
+        metalness: 0.0,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.22,
+        sheen: 0.15,
+        sheenRoughness: 0.4,
+        reflectivity: 0.35,
+        ior: 1.46
       });
     }
 
@@ -377,8 +373,8 @@
       tipRadius,
       texture,
       color,
-      radialSegments = 20,
-      heightSegments = 72
+      radialSegments = 28,
+      heightSegments = 90
     }) {
       const frames = curve.computeFrenetFrames(heightSegments, false);
       const positions = [];
@@ -386,8 +382,8 @@
       const uvs = [];
       const indices = [];
 
-      const ridgeCount = Math.round(3 + texture * 10);
-      const ridgeStrength = texture * 0.10;
+      const ridgeCount = Math.round(2 + texture * 8);
+      const ridgeStrength = texture * 0.06;
 
       for (let i = 0; i <= heightSegments; i++) {
         const t = i / heightSegments;
@@ -440,8 +436,7 @@
       geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
       geometry.computeVertexNormals();
 
-      const mesh = new THREE.Mesh(geometry, hornMaterial(color));
-      return mesh;
+      return new THREE.Mesh(geometry, plasticMaterial(color));
     }
 
     function createMainCurve() {
@@ -451,15 +446,15 @@
       return new THREE.CatmullRomCurve3(
         [
           new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(B * 0.12, L * 0.18, 0.05),
-          new THREE.Vector3(B * 0.28, L * 0.42, 0.08),
-          new THREE.Vector3(B * 0.45, L * 0.68, 0.10),
-          new THREE.Vector3(B * 0.62, L * 0.90, 0.06),
-          new THREE.Vector3(B * 0.72, L * 1.08, 0.00)
+          new THREE.Vector3(B * 0.10, L * 0.16, 0.00),
+          new THREE.Vector3(B * 0.24, L * 0.38, 0.04),
+          new THREE.Vector3(B * 0.40, L * 0.62, 0.06),
+          new THREE.Vector3(B * 0.58, L * 0.88, 0.04),
+          new THREE.Vector3(B * 0.70, L * 1.08, 0.00)
         ],
         false,
         "catmullrom",
-        0.42
+        0.45
       );
     }
 
@@ -477,18 +472,18 @@
     }
 
     function createBranchCurve(mainCurve, index, total) {
-      const t = 0.26 + index * (0.48 / Math.max(1, total - 1));
+      const t = total === 1 ? 0.42 : 0.28 + index * (0.42 / (total - 1));
       const { point, tangent, normal } = getFrameAt(mainCurve, t);
 
-      const len = params.size * (0.22 + index * 0.07);
-      const spread = params.spread * (0.55 + index * 0.18);
+      const len = params.size * (0.22 + index * 0.06);
+      const spread = params.spread * (0.45 + index * 0.16);
 
       const up = new THREE.Vector3(0, 1, 0);
       const dir = new THREE.Vector3()
         .copy(tangent)
-        .multiplyScalar(0.30)
-        .addScaledVector(normal, spread * 0.55)
-        .addScaledVector(up, 0.95)
+        .multiplyScalar(0.24)
+        .addScaledVector(normal, spread * 0.58)
+        .addScaledVector(up, 0.98)
         .normalize();
 
       const p0 = point.clone();
@@ -496,43 +491,44 @@
       const p2 = point.clone().add(dir.clone().multiplyScalar(len * 0.62));
       const p3 = point.clone().add(dir.clone().multiplyScalar(len));
 
-      p1.x += spread * 0.10;
-      p2.x += spread * 0.22;
-      p3.x += spread * 0.30;
+      p1.x += spread * 0.08;
+      p2.x += spread * 0.18;
+      p3.x += spread * 0.28;
 
-      return new THREE.CatmullRomCurve3([p0, p1, p2, p3], false, "catmullrom", 0.45);
+      return new THREE.CatmullRomCurve3([p0, p1, p2, p3], false, "catmullrom", 0.46);
     }
 
     function buildAntler() {
       const group = new THREE.Group();
 
       const mainCurve = createMainCurve();
-      const mainHorn = buildTubeFromCurve(mainCurve, {
-        baseRadius: 0.17 * (params.size / 5),
-        tipRadius: 0.028,
-        texture: params.texture,
-        color: params.color,
-        radialSegments: 22,
-        heightSegments: 90
-      });
-      group.add(mainHorn);
+      group.add(
+        buildTubeFromCurve(mainCurve, {
+          baseRadius: 0.17 * (params.size / 5),
+          tipRadius: 0.026,
+          texture: params.texture,
+          color: params.color,
+          radialSegments: 28,
+          heightSegments: 96
+        })
+      );
 
       for (let i = 0; i < params.branches; i++) {
         const branchCurve = createBranchCurve(mainCurve, i, params.branches);
-        const branch = buildTubeFromCurve(branchCurve, {
-          baseRadius: 0.08 * (params.size / 5) * (1 - i * 0.08),
-          tipRadius: 0.018,
-          texture: params.texture * 0.6,
-          color: params.color,
-          radialSegments: 16,
-          heightSegments: 44
-        });
-        group.add(branch);
+        group.add(
+          buildTubeFromCurve(branchCurve, {
+            baseRadius: Math.max(0.026, 0.075 * (params.size / 5) * (1 - i * 0.08)),
+            tipRadius: 0.014,
+            texture: params.texture * 0.6,
+            color: params.color,
+            radialSegments: 18,
+            heightSegments: 48
+          })
+        );
       }
 
-      group.position.y = -0.4;
-      group.rotation.z = -0.10;
-
+      group.position.y = -0.5;
+      group.rotation.z = -0.08;
       return group;
     }
 
@@ -544,16 +540,16 @@
     }
 
     function randomColor() {
-      const colors = ["#e8d8c3", "#d9c7ae", "#c4a98d", "#efe5d8", "#b88d6c"];
+      const colors = ["#f1e6da", "#e7d9c8", "#d6c0a9", "#c7a488", "#efe5db"];
       return colors[Math.floor(Math.random() * colors.length)];
     }
 
     function randomize() {
-      params.size = THREE.MathUtils.randFloat(3.5, 7.5);
-      params.bend = THREE.MathUtils.randFloat(0.5, 2.0);
-      params.spread = THREE.MathUtils.randFloat(0.35, 1.35);
+      params.size = THREE.MathUtils.randFloat(3.8, 7.2);
+      params.bend = THREE.MathUtils.randFloat(0.5, 1.9);
+      params.spread = THREE.MathUtils.randFloat(0.4, 1.25);
       params.branches = THREE.MathUtils.randInt(2, 5);
-      params.texture = THREE.MathUtils.randFloat(0.05, 0.6);
+      params.texture = THREE.MathUtils.randFloat(0.0, 0.45);
       params.color = randomColor();
       syncInputs();
       updateHorn();
@@ -603,45 +599,6 @@
     document.getElementById("randomBtn").addEventListener("click", randomize);
     document.getElementById("resetBtn").addEventListener("click", resetAll);
 
-    // モデル回転
-    let isDragging = false;
-    let prevX = 0;
-    let prevY = 0;
-    let rotY = -0.35;
-    let rotX = 0.08;
-    let targetZoom = camera.position.z;
-
-    viewer.addEventListener("pointerdown", (e) => {
-      isDragging = true;
-      prevX = e.clientX;
-      prevY = e.clientY;
-      viewer.classList.add("dragging");
-    });
-
-    window.addEventListener("pointerup", () => {
-      isDragging = false;
-      viewer.classList.remove("dragging");
-    });
-
-    window.addEventListener("pointermove", (e) => {
-      if (!isDragging) return;
-
-      const dx = e.clientX - prevX;
-      const dy = e.clientY - prevY;
-      prevX = e.clientX;
-      prevY = e.clientY;
-
-      rotY += dx * 0.008;
-      rotX += dy * 0.005;
-      rotX = Math.max(-0.5, Math.min(0.5, rotX));
-    });
-
-    viewer.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      targetZoom += e.deltaY * 0.01;
-      targetZoom = Math.max(5.5, Math.min(14, targetZoom));
-    }, { passive: false });
-
     syncInputs();
     updateHorn();
 
@@ -656,13 +613,7 @@
 
     function animate() {
       requestAnimationFrame(animate);
-
-      hornGroup.rotation.y += (rotY - hornGroup.rotation.y) * 0.12;
-      hornGroup.rotation.x += (rotX - hornGroup.rotation.x) * 0.12;
-
-      camera.position.z += (targetZoom - camera.position.z) * 0.08;
-      camera.lookAt(0, 2.4, 0);
-
+      controls.update();
       renderer.render(scene, camera);
     }
 
