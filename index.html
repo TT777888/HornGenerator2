@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Realistic Horn Generator - Solid</title>
+    <title>Realistic Horn Generator - Advanced</title>
     <style>
         body { margin: 0; font-family: sans-serif; background: #0c1016; color: #eee; overflow: hidden; }
         #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
@@ -50,7 +50,7 @@
         <div class="hint">
             ・左ドラッグ: 回転 / 右ドラッグ: 平行移動<br>
             ・ホイール: 高速ズーム<br>
-            ・<b>全パーツに蓋を生成し、中身の詰まった構造です</b>
+            ・<b>分岐は節に合わせてランダム配置されます</b>
         </div>
     </div>
     <div id="viewer"></div>
@@ -75,35 +75,33 @@ const params = { size: 2.5, bend: 1.0, texture: 0.2, branches: 2, color: "#fffff
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0c1016);
 const camera = new THREE.PerspectiveCamera(40, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
-camera.position.set(0, 1.5, 8);
+camera.position.set(0, 2, 8);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
+// 深度バッファをより正確に
+renderer.capabilities.logarithmicDepthBuffer = true;
 viewer.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.zoomSpeed = 2.0; 
 
-// Lights
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const light1 = new THREE.DirectionalLight(0xffffff, 1.5);
 light1.position.set(10, 10, 10);
 scene.add(light1);
-const light2 = new THREE.PointLight(0xffffff, 0.8);
-light2.position.set(-5, -2, -5);
-scene.add(light2);
 
 const hornGroup = new THREE.Group();
 scene.add(hornGroup);
 
+// --- ユーティリティ: パラメータに基づく擬似ランダム ---
 function pseudoRandom(seed) {
     const x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
 }
 
-// 蓋付き・先細りホーン生成関数
 function createTaperedHorn(curve, baseRadius, isBranch = false) {
     const segments = 100;
     const radialSegments = 24;
@@ -111,15 +109,17 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
     const indices = [];
     const frames = curve.computeFrenetFrames(segments, false);
 
-    // 1. 頂点の生成
     for (let i = 0; i <= segments; i++) {
         const t = i / segments;
         let taper = Math.pow(1 - t, 0.9);
-        // 分岐の付け根を少し太くしてめり込みやすく
-        if(isBranch && t < 0.1) taper *= (1.2 - t); 
+        
+        // 分岐の場合、根元（t=0）を少し太くしてメインにめり込ませる
+        if(isBranch && t < 0.1) {
+            taper *= (1.2 - t); 
+        }
 
         const bump = 1 + Math.sin(t * 30) * (params.texture * 0.12) * (1 - t);
-        const r = Math.max(0.001, baseRadius * taper * bump); 
+        const r = baseRadius * taper * bump;
 
         const p = curve.getPointAt(t);
         const n = frames.normals[i];
@@ -134,7 +134,6 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
         }
     }
 
-    // 2. 側面のインデックス生成
     for (let i = 0; i < segments; i++) {
         for (let j = 0; j < radialSegments; j++) {
             const a = i * (radialSegments + 1) + j;
@@ -143,23 +142,6 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
             const d = i * (radialSegments + 1) + (j + 1);
             indices.push(a, b, d, b, c, d);
         }
-    }
-
-    // 3. 根元の蓋（Bottom Cap）
-    const centerStartIdx = vertices.length / 3;
-    const centerStart = curve.getPointAt(0);
-    vertices.push(centerStart.x, centerStart.y, centerStart.z);
-    for (let j = 0; j < radialSegments; j++) {
-        indices.push(centerStartIdx, j + 1, j);
-    }
-
-    // 4. 先端の蓋（Top Cap）
-    const centerEndIdx = vertices.length / 3;
-    const centerEnd = curve.getPointAt(1);
-    vertices.push(centerEnd.x, centerEnd.y, centerEnd.z);
-    const lastRingStart = segments * (radialSegments + 1);
-    for (let j = 0; j < radialSegments; j++) {
-        indices.push(centerEndIdx, lastRingStart + j, lastRingStart + j + 1);
     }
 
     const geo = new THREE.BufferGeometry();
@@ -171,8 +153,9 @@ function createTaperedHorn(curve, baseRadius, isBranch = false) {
         color: params.color,
         roughness: 0.65,
         metalness: 0.05,
-        side: THREE.DoubleSide, // 裏表描画
-        flatShading: false
+        transparent: false, // 透明度を無効化して透けを防止
+        depthTest: true,
+        depthWrite: true
     });
 
     return new THREE.Mesh(geo, mat);
@@ -199,27 +182,37 @@ function build() {
     const mainRadius = 0.25 * (L/10 + 0.7);
     hornGroup.add(createTaperedHorn(mainCurve, mainRadius));
 
+    // --- ランダムな分岐 ---
     for (let i = 0; i < params.branches; i++) {
+        // パラメータに基づいたシード値で分岐位置を決定
         const seed = i + L + B;
-        const t = 0.25 + pseudoRandom(seed) * 0.55; 
-        const startP = mainCurve.getPointAt(t);
+        const t = 0.2 + pseudoRandom(seed) * 0.6; // 0.2〜0.8の間にランダム配置
         
-        // 根元をメインの角の中に少し隠す
+        const startP = mainCurve.getPointAt(t);
+        // メインの角の「中」から生えるように、法線方向に少し戻す
         const frames = mainCurve.computeFrenetFrames(100, false);
-        const fIdx = Math.floor(t * 100);
-        const innerOffset = frames.normals[fIdx].clone().negate().multiplyScalar(mainRadius * 0.3);
-        const deepStartP = startP.clone().add(innerOffset);
+        const frameIdx = Math.floor(t * 100);
+        const innerDir = frames.normals[frameIdx].clone().negate().multiplyScalar(mainRadius * 0.5);
+        const deepStartP = startP.clone().add(innerDir);
 
         const branchCurve = new THREE.CatmullRomCurve3([
             deepStartP,
-            startP.clone().add(new THREE.Vector3((pseudoRandom(seed+1)-0.5)*2+B, L*0.2, (pseudoRandom(seed+2)-0.5)*2)),
-            startP.clone().add(new THREE.Vector3((pseudoRandom(seed+3)*2)+B, L*0.4, (pseudoRandom(seed+4)-0.5)*2))
+            startP.clone().add(new THREE.Vector3(
+                (pseudoRandom(seed + 1) - 0.5) * 2 + B, 
+                L * 0.2, 
+                (pseudoRandom(seed + 2) - 0.5) * 2
+            )),
+            startP.clone().add(new THREE.Vector3(
+                (pseudoRandom(seed + 3) * 2) + B, 
+                L * 0.4, 
+                (pseudoRandom(seed + 4) - 0.5) * 3
+            ))
         ]);
+        
         hornGroup.add(createTaperedHorn(branchCurve, mainRadius * 0.5, true));
     }
 
-    // 常に角の重心が中心に来るように
-    hornGroup.position.y = -(L * 0.45);
+    hornGroup.position.y = -(L * 0.5);
     hornGroup.position.x = -(B * 0.5); 
 }
 
