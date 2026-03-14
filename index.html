@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Realistic Horn Generator - Adjusted</title>
+    <title>Realistic Horn Generator - Slim</title>
     <style>
         body { margin: 0; font-family: sans-serif; background: #0c1016; color: #eee; overflow: hidden; }
         #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
@@ -99,7 +99,7 @@ viewer.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
-controls.zoomSpeed = 2.0; // ズーム感度アップ
+controls.zoomSpeed = 2.0; 
 
 // Lights
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -123,7 +123,8 @@ function createTaperedHorn(curve, baseRadius) {
 
     for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const taper = Math.pow(1 - t, 0.75); 
+        // 【修正】先細り（テーパー）をより鋭く (0.75 -> 0.9)
+        const taper = Math.pow(1 - t, 0.9); 
         const bump = 1 + Math.sin(t * 30) * (params.texture * 0.12) * (1 - t);
         const currentRadius = baseRadius * taper * bump;
 
@@ -159,9 +160,9 @@ function createTaperedHorn(curve, baseRadius) {
 
     const mat = new THREE.MeshPhysicalMaterial({
         color: params.color,
-        roughness: 0.6,
-        metalness: 0.1,
-        clearcoat: 0.2
+        roughness: 0.65, // 少しマットに
+        metalness: 0.05,
+        clearcoat: 0.1 // 光沢を抑える
     });
 
     return new THREE.Mesh(geo, mat);
@@ -178,7 +179,6 @@ function build() {
     const L = params.size;
     const B = params.bend;
 
-    // メインのカーブ：少しだけ横(Z)方向にも逃がすことで立体的な曲がりを演出
     const mainCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(B * 0.4, L * 0.3, B * 0.1),
@@ -186,7 +186,10 @@ function build() {
         new THREE.Vector3(B * 1.5, L, 0)
     ]);
 
-    const mainMesh = createTaperedHorn(mainCurve, 0.4 * (L/5 + 0.5));
+    // 【修正】根元の太さを抑制 (0.4 -> 0.25) 
+    // 【修正】長さとの連動をマイルドに (L/5+0.5 -> L/10+0.7)
+    const mainRadius = 0.25 * (L/10 + 0.7);
+    const mainMesh = createTaperedHorn(mainCurve, mainRadius);
     hornGroup.add(mainMesh);
 
     // 分岐の生成
@@ -199,11 +202,10 @@ function build() {
             startP.clone().add(new THREE.Vector3(0.5 + B * 0.2, L * 0.2, 0.2)),
             startP.clone().add(new THREE.Vector3(1.0 + B * 0.4, L * 0.5, -0.2))
         ]);
-        hornGroup.add(createTaperedHorn(branchCurve, 0.2 * (L/5 + 0.5)));
+        // 分岐も細く
+        hornGroup.add(createTaperedHorn(branchCurve, mainRadius * 0.5));
     }
 
-    // 角全体の中心を画面中央に持ってくるためのオフセット
-    // 長さLに応じて動的に位置を下げます
     hornGroup.position.y = -(L * 0.5);
     hornGroup.position.x = -(B * 0.5); 
 }
