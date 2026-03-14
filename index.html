@@ -1,350 +1,267 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>Horn Generator</title>
-
-<style>
-
-body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
-background:#0c1016;
-color:#111;
-}
-
-#app{
-display:grid;
-grid-template-columns:320px 1fr;
-height:100vh;
-}
-
-.panel{
-background:rgba(255,255,255,0.75);
-backdrop-filter:blur(20px);
-padding:20px;
-}
-
-h1{
-margin:0 0 10px 0;
-font-size:24px;
-}
-
-.field{
-margin-bottom:16px;
-}
-
-label{
-display:flex;
-justify-content:space-between;
-font-size:14px;
-margin-bottom:6px;
-}
-
-input[type=range]{
-width:100%;
-}
-
-input[type=color]{
-width:100%;
-height:36px;
-}
-
-#viewer{
-width:100%;
-height:100%;
-}
-
-canvas{
-width:100%;
-height:100%;
-display:block;
-}
-
-</style>
+    <meta charset="UTF-8">
+    <title>Realistic Horn Generator</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #0c1016; color: #eee; overflow: hidden; }
+        #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+        .panel { 
+            background: rgba(20, 25, 35, 0.9); 
+            padding: 25px; 
+            border-right: 1px solid #333;
+            z-index: 10;
+            overflow-y: auto;
+        }
+        h1 { margin: 0 0 20px 0; font-size: 20px; letter-spacing: 2px; color: #e7d9c8; }
+        .field { margin-bottom: 20px; }
+        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #aaa; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #e7d9c8; }
+        input[type=color] { width: 100%; height: 30px; border: none; background: none; cursor: pointer; }
+        #viewer { width: 100%; height: 100%; position: relative; }
+        .hint { font-size: 11px; color: #666; margin-top: 10px; line-height: 1.5; }
+    </style>
 </head>
-
 <body>
 
 <div id="app">
+    <div class="panel">
+        <h1>HORN GEN</h1>
+        
+        <div class="field">
+            <label>長さ (Size) <span id="sizeV">5.0</span></label>
+            <input id="size" type="range" min="2" max="12" step="0.1" value="5">
+        </div>
 
-<div class="panel">
+        <div class="field">
+            <label>曲がり (Curve) <span id="bendV">1.0</span></label>
+            <input id="bend" type="range" min="0.1" max="3" step="0.05" value="1">
+        </div>
 
-<h1>Horn Generator</h1>
+        <div class="field">
+            <label>節の深さ (Texture) <span id="textureV">0.2</span></label>
+            <input id="texture" type="range" min="0" max="1" step="0.01" value="0.2">
+        </div>
 
-<div class="field">
-<label>大きさ <span id="sizeV">5</span></label>
-<input id="size" type="range" min="2" max="9" step="0.1" value="5">
-</div>
+        <div class="field">
+            <label>分岐数 (Branches) <span id="branchesV">3</span></label>
+            <input id="branches" type="range" min="0" max="6" step="1" value="3">
+        </div>
 
-<div class="field">
-<label>曲り <span id="bendV">1</span></label>
-<input id="bend" type="range" min="0.2" max="2" step="0.01" value="1">
-</div>
+        <div class="field">
+            <label>色 (Base Color)</label>
+            <input id="color" type="color" value="#c5b7a1">
+        </div>
 
-<div class="field">
-<label>節 <span id="textureV">0.2</span></label>
-<input id="texture" type="range" min="0" max="1" step="0.01" value="0.2">
-</div>
-
-<div class="field">
-<label>分岐 <span id="branchesV">3</span></label>
-<input id="branches" type="range" min="1" max="5" step="1" value="3">
-</div>
-
-<div class="field">
-<label>色</label>
-<input id="color" type="color" value="#e7d9c8">
-</div>
-
-</div>
-
-<div id="viewer"></div>
-
+        <div class="hint">
+            左ドラッグ: 回転<br>
+            右ドラッグ: 移動<br>
+            ホイール: ズーム
+        </div>
+    </div>
+    <div id="viewer"></div>
 </div>
 
 <script type="importmap">
 {
-"imports":{
-"three":"https://unpkg.com/three@0.160.0/build/three.module.js"
-}
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
 }
 </script>
 
 <script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-import * as THREE from "three"
+const viewer = document.getElementById("viewer");
 
-const viewer=document.getElementById("viewer")
+// --- パラメータ管理 ---
+const params = {
+    size: 5,
+    bend: 1,
+    texture: 0.2,
+    branches: 3,
+    color: "#c5b7a1"
+};
 
-const params={
-size:5,
-bend:1,
-texture:0.2,
-branches:3,
-color:"#e7d9c8"
+// --- Scene 基本設定 ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c1016);
+
+const camera = new THREE.PerspectiveCamera(40, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
+camera.position.set(0, 5, 12);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+viewer.appendChild(renderer.domElement);
+
+// OrbitControls (ズームと回転の改善)
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const light1 = new THREE.DirectionalLight(0xffffff, 1.5);
+light1.position.set(10, 10, 10);
+scene.add(light1);
+
+const light2 = new THREE.PointLight(0xffffff, 1);
+light2.position.set(-5, 2, -5);
+scene.add(light2);
+
+// 角を格納するグループ（このグループの回転は保持される）
+const hornGroup = new THREE.Group();
+scene.add(hornGroup);
+
+// --- 先細りチューブ生成関数 ---
+function createTaperedHorn(curve, baseRadius) {
+    const segments = 100;
+    const radialSegments = 24;
+    const vertices = [];
+    const indices = [];
+    const uvs = [];
+
+    const frames = curve.computeFrenetFrames(segments, false);
+
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        
+        // 【改善】先細り（テーパー）: 指数関数で先端を鋭く
+        const taper = Math.pow(1 - t, 0.7); 
+        
+        // 【改善】節の凹凸（テクスチャ）: サイン波で周期的な盛り上がりを作る
+        const bump = 1 + Math.sin(t * 30) * (params.texture * 0.15) * (1 - t);
+        const currentRadius = baseRadius * taper * bump;
+
+        const p = curve.getPointAt(t);
+        const n = frames.normals[i];
+        const b = frames.binormals[i];
+
+        for (let j = 0; j <= radialSegments; j++) {
+            const theta = (j / radialSegments) * Math.PI * 2;
+            const x = Math.cos(theta) * currentRadius;
+            const y = Math.sin(theta) * currentRadius;
+
+            const v = new THREE.Vector3().copy(p)
+                .add(n.clone().multiplyScalar(x))
+                .add(b.clone().multiplyScalar(y));
+
+            vertices.push(v.x, v.y, v.z);
+            uvs.push(t, j / radialSegments);
+        }
+    }
+
+    for (let i = 0; i < segments; i++) {
+        for (let j = 0; j < radialSegments; j++) {
+            const a = i * (radialSegments + 1) + j;
+            const b = (i + 1) * (radialSegments + 1) + j;
+            const c = (i + 1) * (radialSegments + 1) + (j + 1);
+            const d = i * (radialSegments + 1) + (j + 1);
+            indices.push(a, b, d, b, c, d);
+        }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshPhysicalMaterial({
+        color: params.color,
+        roughness: 0.7,
+        metalness: 0.1,
+        flatShading: false,
+    });
+
+    return new THREE.Mesh(geo, mat);
 }
 
-const scene=new THREE.Scene()
+// --- ビルド処理 ---
+function build() {
+    // 【改善】Groupを削除せず、中身のMeshだけを入れ替える（これで回転がリセットされない）
+    while(hornGroup.children.length > 0) {
+        const child = hornGroup.children[0];
+        child.geometry.dispose();
+        child.material.dispose();
+        hornGroup.remove(child);
+    }
 
-const camera=new THREE.PerspectiveCamera(
-40,
-viewer.clientWidth/viewer.clientHeight,
-0.1,
-100
-)
+    const L = params.size;
+    const B = params.bend;
 
-camera.position.set(0,2.5,9)
+    // メインのカーブ（より有機的な放物線へ）
+    const mainCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(B * 0.5, L * 0.3, 0.2),
+        new THREE.Vector3(B * 1.5, L * 0.7, 0.8),
+        new THREE.Vector3(B * 2.0, L, 0)
+    ]);
 
-const renderer=new THREE.WebGLRenderer({antialias:true})
+    const mainMesh = createTaperedHorn(mainCurve, 0.3 * (L/5));
+    hornGroup.add(mainMesh);
 
-renderer.setSize(viewer.clientWidth,viewer.clientHeight)
+    // 分岐の生成
+    for (let i = 0; i < params.branches; i++) {
+        const startT = 0.2 + (i * 0.12);
+        const startP = mainCurve.getPointAt(startT);
+        
+        const branchCurve = new THREE.CatmullRomCurve3([
+            startP,
+            startP.clone().add(new THREE.Vector3(0.5 + i*0.4, 1.2, 0.3)),
+            startP.clone().add(new THREE.Vector3(1.2 + i*0.6, 2.5, -0.2))
+        ]);
 
-viewer.appendChild(renderer.domElement)
-
-scene.add(new THREE.AmbientLight(0xffffff,1.4))
-
-const light=new THREE.DirectionalLight(0xffffff,2)
-light.position.set(5,7,5)
-scene.add(light)
-
-let hornGroup=new THREE.Group()
-scene.add(hornGroup)
-
-function plastic(color){
-
-return new THREE.MeshPhysicalMaterial({
-
-color:color,
-roughness:0.25,
-clearcoat:0.4,
-clearcoatRoughness:0.2
-
-})
-
+        const branchMesh = createTaperedHorn(branchCurve, 0.15 * (L/5));
+        hornGroup.add(branchMesh);
+    }
 }
 
-function lerp(a,b,t){
-
-return a+(b-a)*t
-
+// --- イベント制御 ---
+function updateAll() {
+    build();
 }
 
-function tube(curve,opt){
+// UIイベント登録
+const inputs = ['size', 'bend', 'texture', 'branches'];
+inputs.forEach(id => {
+    const el = document.getElementById(id);
+    const valDisplay = document.getElementById(id + 'V');
+    el.oninput = (e) => {
+        params[id] = parseFloat(e.target.value);
+        valDisplay.innerText = params[id].toFixed(id === 'branches' ? 0 : 1);
+        updateAll();
+    };
+});
 
-const geo=new THREE.TubeGeometry(curve,80,opt.r1,24,false)
+document.getElementById('color').oninput = (e) => {
+    params.color = e.target.value;
+    updateAll();
+};
 
-return new THREE.Mesh(geo,plastic(opt.color))
+// リサイズ対応
+window.addEventListener('resize', () => {
+    camera.aspect = viewer.clientWidth / viewer.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+});
 
+// 初期ビルド
+build();
+
+// --- アニメーションループ ---
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
 }
-
-function mainCurve(){
-
-const L=params.size
-const B=params.bend
-
-return new THREE.CatmullRomCurve3([
-
-new THREE.Vector3(0,0,0),
-new THREE.Vector3(B*0.2,L*0.3,0),
-new THREE.Vector3(B*0.5,L*0.6,0.1),
-new THREE.Vector3(B*0.7,L,0)
-
-])
-
-}
-
-function branchCurve(base,i){
-
-const p=base.getPointAt(0.3+0.2*i)
-
-return new THREE.CatmullRomCurve3([
-
-p,
-p.clone().add(new THREE.Vector3(0.3+i*0.1,0.8,0)),
-p.clone().add(new THREE.Vector3(0.5+i*0.2,1.4,0))
-
-])
-
-}
-
-function build(){
-
-scene.remove(hornGroup)
-
-hornGroup=new THREE.Group()
-
-const main=mainCurve()
-
-hornGroup.add(tube(main,{
-r1:0.17*(params.size/5),
-color:params.color
-}))
-
-for(let i=0;i<params.branches;i++){
-
-hornGroup.add(tube(branchCurve(main,i),{
-
-r1:0.07*(params.size/5),
-color:params.color
-
-}))
-
-}
-
-hornGroup.position.y=-0.5
-
-scene.add(hornGroup)
-
-}
-
-build()
-
-function update(){
-
-build()
-
-}
-
-size.oninput=e=>{
-
-params.size=+e.target.value
-sizeV.innerText=params.size.toFixed(1)
-update()
-
-}
-
-bend.oninput=e=>{
-
-params.bend=+e.target.value
-bendV.innerText=params.bend.toFixed(2)
-update()
-
-}
-
-texture.oninput=e=>{
-
-params.texture=+e.target.value
-textureV.innerText=params.texture.toFixed(2)
-update()
-
-}
-
-branches.oninput=e=>{
-
-params.branches=+e.target.value
-branchesV.innerText=params.branches
-update()
-
-}
-
-color.oninput=e=>{
-
-params.color=e.target.value
-update()
-
-}
-
-let drag=false
-let lastX=0
-let lastY=0
-
-let targetX=0
-let targetY=0
-
-viewer.onpointerdown=e=>{
-
-drag=true
-lastX=e.clientX
-lastY=e.clientY
-
-}
-
-window.onpointerup=()=>{
-
-drag=false
-
-}
-
-window.onpointermove=e=>{
-
-if(!drag)return
-
-const dx=e.clientX-lastX
-const dy=e.clientY-lastY
-
-lastX=e.clientX
-lastY=e.clientY
-
-targetY+=dx*0.01
-targetX+=dy*0.01
-
-}
-
-viewer.onwheel=e=>{
-
-camera.position.z+=e.deltaY*0.01
-camera.position.z=Math.max(5,Math.min(14,camera.position.z))
-
-}
-
-function animate(){
-
-requestAnimationFrame(animate)
-
-hornGroup.rotation.y+=
-(targetY-hornGroup.rotation.y)*0.1
-
-hornGroup.rotation.x+=
-(targetX-hornGroup.rotation.x)*0.1
-
-renderer.render(scene,camera)
-
-}
-
-animate()
+animate();
 
 </script>
-
 </body>
 </html>
