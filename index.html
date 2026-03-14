@@ -2,24 +2,25 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Realistic Horn Generator - Adjusted</title>
+    <title>Bright Horn Generator - Solid & Free Look</title>
     <style>
-        body { margin: 0; font-family: sans-serif; background: #0c1016; color: #eee; overflow: hidden; }
+        body { margin: 0; font-family: sans-serif; background: #1a1f26; color: #eee; overflow: hidden; }
         #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
         .panel { 
-            background: rgba(20, 25, 35, 0.95); 
+            background: rgba(25, 30, 40, 0.95); 
             padding: 25px; 
-            border-right: 1px solid #333;
+            border-right: 1px solid #444;
             z-index: 10;
             overflow-y: auto;
         }
-        h1 { margin: 0 0 20px 0; font-size: 20px; letter-spacing: 2px; color: #e7d9c8; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        h1 { margin: 0 0 20px 0; font-size: 20px; letter-spacing: 2px; color: #e7d9c8; border-bottom: 1px solid #555; padding-bottom: 10px; }
         .field { margin-bottom: 20px; }
-        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #aaa; }
+        label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #bbb; }
         input[type=range] { width: 100%; cursor: pointer; accent-color: #e7d9c8; }
-        input[type=color] { width: 100%; height: 30px; border: 1px solid #444; background: none; cursor: pointer; }
+        input[type=color] { width: 100%; height: 35px; border: 1px solid #555; background: none; cursor: pointer; border-radius: 4px; }
         #viewer { width: 100%; height: 100%; position: relative; }
-        .hint { font-size: 11px; color: #666; margin-top: 15px; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; }
+        .hint { font-size: 11px; color: #888; margin-top: 15px; line-height: 1.5; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; }
+        .axes-label { position: absolute; bottom: 10px; right: 10px; color: #888; font-size: 12px; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -27,39 +28,35 @@
 <div id="app">
     <div class="panel">
         <h1>HORN GEN</h1>
-        
         <div class="field">
             <label>長さ (Size) <span id="sizeV">2.5</span></label>
             <input id="size" type="range" min="1" max="10" step="0.1" value="2.5">
         </div>
-
         <div class="field">
             <label>曲がり (Curve) <span id="bendV">1.0</span></label>
             <input id="bend" type="range" min="0" max="4" step="0.05" value="1.0">
         </div>
-
         <div class="field">
             <label>節の深さ (Texture) <span id="textureV">0.2</span></label>
             <input id="texture" type="range" min="0" max="1" step="0.01" value="0.2">
         </div>
-
         <div class="field">
             <label>分岐数 (Branches) <span id="branchesV">2</span></label>
             <input id="branches" type="range" min="0" max="6" step="1" value="2">
         </div>
-
         <div class="field">
             <label>色 (Base Color)</label>
             <input id="color" type="color" value="#ffffff">
         </div>
-
         <div class="hint">
-            左ドラッグ: 回転<br>
-            右ドラッグ: 平行移動<br>
-            ホイール: <b>高速ズーム</b>
+            ・全方位360度回転可能<br>
+            ・軸表示: 赤(X) 緑(Y) 青(Z)<br>
+            ・衝突を避けるアルゴリズムを適用済み
         </div>
     </div>
-    <div id="viewer"></div>
+    <div id="viewer">
+        <div class="axes-label">X:Red / Y:Green / Z:Blue</div>
+    </div>
 </div>
 
 <script type="importmap">
@@ -76,56 +73,72 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const viewer = document.getElementById("viewer");
+const params = { size: 2.5, bend: 1.0, texture: 0.2, branches: 2, color: "#ffffff" };
 
-const params = {
-    size: 2.5,
-    bend: 1.0,
-    texture: 0.2,
-    branches: 2,
-    color: "#ffffff"
-};
-
+// --- Scene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0c1016);
+scene.background = new THREE.Color(0x1a1f26);
 
 const camera = new THREE.PerspectiveCamera(40, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
-camera.position.set(0, 2, 8);
+camera.position.set(5, 5, 8);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
+renderer.useLegacyLights = false; // 高輝度な照明計算
+renderer.toneMapping = THREE.ReinhardToneMapping;
+renderer.toneMappingExposure = 1.5; // 全体の明るさを底上げ
 viewer.appendChild(renderer.domElement);
 
+// --- 軸ヘルパー (XYZ座標) ---
+const axesHelper = new THREE.AxesHelper(5);
+scene.add(axesHelper);
+
+// --- Controls ---
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
-controls.zoomSpeed = 2.0; // ズーム感度アップ
+controls.zoomSpeed = 2.0;
+// 回転制限を解除
+controls.minPolarAngle = 0; 
+controls.maxPolarAngle = Math.PI; 
 
-// Lights
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const light1 = new THREE.DirectionalLight(0xffffff, 1.5);
-light1.position.set(10, 10, 10);
-scene.add(light1);
-const light2 = new THREE.PointLight(0xffffff, 1);
-light2.position.set(-5, 2, -5);
-scene.add(light2);
+// --- 明るいライティング ---
+scene.add(new THREE.AmbientLight(0xffffff, 1.2)); // 環境光を大幅アップ
+
+const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
+mainLight.position.set(10, 15, 10);
+scene.add(mainLight);
+
+const rimLight = new THREE.PointLight(0xffffff, 3);
+rimLight.position.set(-10, 5, -10);
+scene.add(rimLight);
+
+const topLight = new THREE.PointLight(0xffffff, 2);
+topLight.position.set(0, 20, 0);
+scene.add(topLight);
 
 const hornGroup = new THREE.Group();
 scene.add(hornGroup);
 
-function createTaperedHorn(curve, baseRadius) {
+function pseudoRandom(seed) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+function createTaperedHorn(curve, baseRadius, isBranch = false) {
     const segments = 100;
     const radialSegments = 24;
     const vertices = [];
     const indices = [];
-    const uvs = [];
     const frames = curve.computeFrenetFrames(segments, false);
 
     for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const taper = Math.pow(1 - t, 0.75); 
+        let taper = Math.pow(1 - t, 0.9);
+        if(isBranch && t < 0.1) taper *= (1.2 - t); 
         const bump = 1 + Math.sin(t * 30) * (params.texture * 0.12) * (1 - t);
-        const currentRadius = baseRadius * taper * bump;
+        const r = Math.max(0.001, baseRadius * taper * bump); 
 
         const p = curve.getPointAt(t);
         const n = frames.normals[i];
@@ -134,13 +147,13 @@ function createTaperedHorn(curve, baseRadius) {
         for (let j = 0; j <= radialSegments; j++) {
             const theta = (j / radialSegments) * Math.PI * 2;
             const v = new THREE.Vector3().copy(p)
-                .add(n.clone().multiplyScalar(Math.cos(theta) * currentRadius))
-                .add(b.clone().multiplyScalar(Math.sin(theta) * currentRadius));
+                .add(n.clone().multiplyScalar(Math.cos(theta) * r))
+                .add(b.clone().multiplyScalar(Math.sin(theta) * r));
             vertices.push(v.x, v.y, v.z);
-            uvs.push(t, j / radialSegments);
         }
     }
 
+    // 側面
     for (let i = 0; i < segments; i++) {
         for (let j = 0; j < radialSegments; j++) {
             const a = i * (radialSegments + 1) + j;
@@ -151,17 +164,28 @@ function createTaperedHorn(curve, baseRadius) {
         }
     }
 
+    // 蓋（ソリッド化）
+    const centerStartIdx = vertices.length / 3;
+    const centerStart = curve.getPointAt(0);
+    vertices.push(centerStart.x, centerStart.y, centerStart.z);
+    for (let j = 0; j < radialSegments; j++) indices.push(centerStartIdx, j + 1, j);
+
+    const centerEndIdx = vertices.length / 3;
+    const centerEnd = curve.getPointAt(1);
+    vertices.push(centerEnd.x, centerEnd.y, centerEnd.z);
+    const lastRingStart = segments * (radialSegments + 1);
+    for (let j = 0; j < radialSegments; j++) indices.push(centerEndIdx, lastRingStart + j, lastRingStart + j + 1);
+
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
     const mat = new THREE.MeshPhysicalMaterial({
         color: params.color,
-        roughness: 0.6,
+        roughness: 0.4, // 少しツヤを出す
         metalness: 0.1,
-        clearcoat: 0.2
+        side: THREE.DoubleSide
     });
 
     return new THREE.Mesh(geo, mat);
@@ -178,7 +202,7 @@ function build() {
     const L = params.size;
     const B = params.bend;
 
-    // メインのカーブ：少しだけ横(Z)方向にも逃がすことで立体的な曲がりを演出
+    // メインの放物線
     const mainCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(B * 0.4, L * 0.3, B * 0.1),
@@ -186,38 +210,49 @@ function build() {
         new THREE.Vector3(B * 1.5, L, 0)
     ]);
 
-    const mainMesh = createTaperedHorn(mainCurve, 0.4 * (L/5 + 0.5));
-    hornGroup.add(mainMesh);
+    const mainRadius = 0.25 * (L/10 + 0.7);
+    hornGroup.add(createTaperedHorn(mainCurve, mainRadius));
 
-    // 分岐の生成
+    const frames = mainCurve.computeFrenetFrames(100, false);
+
+    // 分岐の生成（衝突回避ロジック）
     for (let i = 0; i < params.branches; i++) {
-        const t = 0.25 + (i * 0.12);
-        if (t > 0.9) break;
+        const seed = i + L + B;
+        const t = 0.2 + pseudoRandom(seed) * 0.6;
         const startP = mainCurve.getPointAt(t);
+        const fIdx = Math.floor(t * 100);
+        
+        // メインの曲がり方向（法線）を基準に、外側へ分岐させることで衝突を回避
+        const normal = frames.normals[fIdx];
+        const binormal = frames.binormals[fIdx];
+        
+        // 付け根を少し埋める
+        const deepStartP = startP.clone().add(normal.clone().multiplyScalar(-mainRadius * 0.3));
+
+        // 分岐の軌道を「外側かつ少し上」へ逃がす
         const branchCurve = new THREE.CatmullRomCurve3([
-            startP,
-            startP.clone().add(new THREE.Vector3(0.5 + B * 0.2, L * 0.2, 0.2)),
-            startP.clone().add(new THREE.Vector3(1.0 + B * 0.4, L * 0.5, -0.2))
+            deepStartP,
+            startP.clone().add(normal.clone().multiplyScalar(1.5 + B * 0.5)).add(new THREE.Vector3(0, L * 0.1, 0)),
+            startP.clone().add(normal.clone().multiplyScalar(2.5 + B)).add(binormal.clone().multiplyScalar((pseudoRandom(seed)-0.5)*2))
         ]);
-        hornGroup.add(createTaperedHorn(branchCurve, 0.2 * (L/5 + 0.5)));
+
+        hornGroup.add(createTaperedHorn(branchCurve, mainRadius * 0.4, true));
     }
 
-    // 角全体の中心を画面中央に持ってくるためのオフセット
-    // 長さLに応じて動的に位置を下げます
-    hornGroup.position.y = -(L * 0.5);
+    // 重心調整
+    hornGroup.position.y = -(L * 0.45);
     hornGroup.position.x = -(B * 0.5); 
+    controls.target.set(0, 0, 0); // 常に中心を向く
 }
 
-const inputs = ['size', 'bend', 'texture', 'branches'];
-inputs.forEach(id => {
-    const el = document.getElementById(id);
-    el.oninput = (e) => {
+const ids = ['size', 'bend', 'texture', 'branches'];
+ids.forEach(id => {
+    document.getElementById(id).oninput = (e) => {
         params[id] = parseFloat(e.target.value);
-        document.getElementById(id + 'V').innerText = params[id].toFixed(id === 'branches' ? 0 : 1);
+        document.getElementById(id + 'V').innerText = params[id].toFixed(id==='branches'?0:1);
         build();
     };
 });
-
 document.getElementById('color').oninput = (e) => {
     params.color = e.target.value;
     build();
@@ -230,14 +265,12 @@ window.addEventListener('resize', () => {
 });
 
 build();
-
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
-
 </script>
 </body>
 </html>
