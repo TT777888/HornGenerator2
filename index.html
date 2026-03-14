@@ -2,82 +2,70 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Bio-Horn Generator: Disc-Stack Edition</title>
+    <title>Realistic Bio-Horn v4: Growth Wobble Edition</title>
     <style>
-        :root { --accent: #e7d9c8; --bg: #0f1218; --panel: #1a1f26; }
-        body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: #fff; overflow: hidden; }
-        #app { display: grid; grid-template-columns: 350px 1fr; height: 100vh; }
+        :root { --accent: #c2a172; --bg: #0a0c10; --panel: #161a22; }
+        body { margin: 0; font-family: 'Avenir', 'Helvetica Neue', sans-serif; background: var(--bg); color: #fff; overflow: hidden; }
+        #app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
         
-        /* 画面1: 設定パネル */
         .panel { 
-            background: var(--panel); 
-            padding: 30px; 
-            border-right: 1px solid #333;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
+            background: var(--panel); padding: 30px; border-right: 1px solid #2a2f3a;
+            display: flex; flex-direction: column; gap: 20px; overflow-y: auto;
         }
-        h1 { font-size: 1.2rem; letter-spacing: 3px; border-left: 4px solid var(--accent); padding-left: 15px; margin-bottom: 30px; }
-        .control-group { display: flex; flex-direction: column; gap: 10px; }
-        label { font-size: 0.8rem; color: #888; display: flex; justify-content: space-between; }
-        .level-labels { display: flex; justify-content: space-between; padding: 0 5px; font-size: 0.7rem; color: #555; }
+        h1 { font-size: 1.2rem; letter-spacing: 4px; color: var(--accent); border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .control-group { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; }
+        label { font-size: 0.8rem; color: #888; display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .steps { display: flex; justify-content: space-between; font-size: 0.6rem; color: #444; }
         
         input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
-        input[type=color] { width: 100%; height: 40px; border: none; background: none; cursor: pointer; }
+        input[type=color] { width: 100%; height: 40px; border: 1px solid #333; background: none; cursor: pointer; }
         
-        button#generate { 
-            margin-top: 10px; padding: 15px; background: var(--accent); color: #000; 
-            border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        #generate { 
+            padding: 18px; background: var(--accent); color: #000; font-weight: 900; 
+            border: none; border-radius: 4px; cursor: pointer; transition: 0.3s;
         }
-        button#generate:hover { opacity: 0.8; transform: translateY(-2px); }
+        #generate:hover { background: #fff; letter-spacing: 2px; }
 
-        /* 画面2: ビューア */
-        #viewer { width: 100%; height: 100%; position: relative; background: radial-gradient(circle at center, #252a33 0%, #0f1218 100%); }
-        .axes-info { position: absolute; bottom: 20px; right: 20px; font-size: 0.7rem; color: #555; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; }
+        #viewer { width: 100%; height: 100%; position: relative; }
+        .tag { position: absolute; top: 20px; left: 20px; font-size: 0.6rem; color: #444; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div class="panel">
-        <h1>BIO-HORN UI</h1>
+        <h1>GENOTYPE-04</h1>
         
         <div class="control-group">
-            <label>長さ (SIZE) <b id="val-size">3</b></label>
+            <label>SIZE (1-5) <b id="val-size">3</b></label>
             <input id="size" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>MIN</span><span>MID</span><span>MAX</span></div>
         </div>
 
         <div class="control-group">
-            <label>曲がり (CURVE) <b id="val-bend">3</b></label>
+            <label>CURVE (1-5) <b id="val-bend">3</b></label>
             <input id="bend" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>STRAIGHT</span><span>WAVY</span><span>TWIST</span></div>
         </div>
 
         <div class="control-group">
-            <label>節 (TEXTURE) <b id="val-texture">3</b></label>
+            <label>ROUGHNESS (1-5) <b id="val-texture">3</b></label>
             <input id="texture" type="range" min="1" max="5" step="1" value="3">
-            <div class="level-labels"><span>SMOOTH</span><span>ROUGH</span><span>BUMPY</span></div>
         </div>
 
         <div class="control-group">
-            <label>分岐 (BRANCHES) <b id="val-branches">1</b></label>
+            <label>BRANCH RATE (1-5) <b id="val-branches">1</b></label>
             <input id="branches" type="range" min="1" max="5" step="1" value="1">
-            <div class="level-labels"><span>NONE</span><span>FEW</span><span>MANY</span></div>
         </div>
 
         <div class="control-group">
-            <label>色 (BASE COLOR)</label>
-            <input id="color" type="color" value="#d2b48c">
+            <label>PIGMENT</label>
+            <input id="color" type="color" value="#a68b6d">
         </div>
 
-        <button id="generate">新しい個体を生成</button>
-        <p style="font-size: 0.7rem; color: #666; line-height: 1.4;">※「生成」を押すたびに、同じパラメータでも形状にわずかな個体差が生まれます。</p>
+        <button id="generate">GENERATE NEW INDIVIDUAL</button>
     </div>
 
     <div id="viewer">
-        <div class="axes-info">X:Red Y:Green Z:Blue | 360° Free Rotation</div>
+        <div class="tag">INDIVIDUAL SEED-BASED GROWTH ENGINE</div>
     </div>
 </div>
 
@@ -95,177 +83,146 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const viewer = document.getElementById("viewer");
-const settings = { size: 3, bend: 3, texture: 3, branches: 1, color: "#d2b48c" };
+let settings = { size: 3, bend: 3, texture: 3, branches: 1, color: "#a68b6d" };
 
-// --- Three.js Setup ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
-camera.position.set(6, 4, 10);
+camera.position.set(10, 6, 14);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
 viewer.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// Lights
-scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-const sun = new THREE.DirectionalLight(0xffffff, 2);
-sun.position.set(5, 10, 7);
+// Lighting setup for depth
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(10, 15, 10);
 scene.add(sun);
-const rim = new THREE.PointLight(0xffffff, 4);
-rim.position.set(-5, 2, -5);
+const rim = new THREE.PointLight(0xffffff, 3);
+rim.position.set(-8, 2, -8);
 scene.add(rim);
-
-const axesHelper = new THREE.AxesHelper(2);
-scene.add(axesHelper);
 
 const hornGroup = new THREE.Group();
 scene.add(hornGroup);
 
-// --- Core Logic: Disc Stacking ---
-function createHorn(isBranch = false, startPos = new THREE.Vector3(), startTangent = new THREE.Vector3(0,1,0), customScale = 1.0) {
-    const segments = 120;
-    const radialSegments = 24;
-    
-    // パラメータを5段階から物理量へ変換
-    const L = (settings.size * 1.5) * customScale;
-    const B = settings.bend * 0.4;
-    const T = settings.texture * 0.05;
-    
-    const vertices = [];
-    const indices = [];
-    const points = [];
-
-    // 1. 背骨（軌道）の作成：個体差ノイズを混入
-    const noise = () => (Math.random() - 0.5) * 0.05;
-    for (let i = 0; i <= segments; i++) {
-        const t = i / segments;
-        // ベンド具合にランダムな揺らぎを追加
-        const x = Math.pow(t, 2) * B * (1.5 + noise()) + (isBranch ? t * 2 : 0);
-        const y = t * L;
-        const z = Math.sin(t * Math.PI) * B * noise();
-        points.push(new THREE.Vector3(x, y, z));
-    }
-    const curve = new THREE.CatmullRomCurve3(points);
-    const frames = curve.computeFrenetFrames(segments, false);
-
-    const baseRadius = (isBranch ? 0.15 : 0.3) * (L / 5 + 0.8);
-
-    // 2. ディスク（輪切り）の積み上げ
-    for (let i = 0; i <= segments; i++) {
-        const t = i / segments;
-        const taper = Math.pow(1 - t, 0.9);
-        
-        // 節（テクスチャ）の計算：ここにも個体差
-        const frequency = 25 + (Math.random() * 5);
-        const bump = 1 + Math.sin(t * frequency) * T * (1 - t);
-        const r = Math.max(0.001, baseRadius * taper * bump);
-
-        const p = curve.getPointAt(t);
-        const n = frames.normals[i];
-        const b = frames.binormals[i];
-
-        for (let j = 0; j <= radialSegments; j++) {
-            const theta = (j / radialSegments) * Math.PI * 2;
-            const v = new THREE.Vector3().copy(p)
-                .add(n.clone().multiplyScalar(Math.cos(theta) * r))
-                .add(b.clone().multiplyScalar(Math.sin(theta) * r));
-            vertices.push(v.x, v.y, v.z);
-        }
-    }
-
-    // 3. インデックス（面）
-    for (let i = 0; i < segments; i++) {
-        for (let j = 0; j < radialSegments; j++) {
-            const a = i * (radialSegments + 1) + j;
-            const b = (i + 1) * (radialSegments + 1) + j;
-            const c = (i + 1) * (radialSegments + 1) + (j + 1);
-            const d = i * (radialSegments + 1) + (j + 1);
-            indices.push(a, b, d, b, c, d);
-        }
-    }
-
-    // 4. 蓋（キャップ）
-    const centerStartIdx = vertices.length / 3;
-    const pStart = curve.getPointAt(0);
-    vertices.push(pStart.x, pStart.y, pStart.z);
-    for (let j = 0; j < radialSegments; j++) indices.push(centerStartIdx, j + 1, j);
-
-    const centerEndIdx = vertices.length / 3;
-    const pEnd = curve.getPointAt(1);
-    vertices.push(pEnd.x, pEnd.y, pEnd.z);
-    const lastRingStart = segments * (radialSegments + 1);
-    for (let j = 0; j < radialSegments; j++) indices.push(centerEndIdx, lastRingStart + j, lastRingStart + j + 1);
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geo.setIndex(indices);
-    geo.computeVertexNormals();
-
+// --- 成長ゆらぎアルゴリズム ---
+function growHorn(isBranch = false, startPos = new THREE.Vector3(), direction = new THREE.Vector3(0,1,0), scale = 1.0) {
+    const group = new THREE.Group();
     const mat = new THREE.MeshPhysicalMaterial({
         color: settings.color,
-        roughness: 0.6,
-        metalness: 0.1,
-        side: THREE.DoubleSide
+        roughness: 0.8,
+        metalness: 0.05,
     });
 
-    const mesh = new THREE.Mesh(geo, mat);
-    if(isBranch) {
-        // 分岐の位置調整
-        mesh.position.copy(startPos);
+    const steps = 60 + (settings.size * 20);
+    const baseR = (isBranch ? 0.12 : 0.45) * (settings.size * 0.15 + 0.6) * scale;
+    
+    let currentPos = startPos.clone();
+    let currentDir = direction.clone().normalize();
+    let drift = new THREE.Vector3(); // 成長の偏り
+
+    // 個体差のためのシードに基づく初期値
+    const individualDrift = (Math.random() - 0.5) * settings.bend * 0.1;
+
+    for (let i = 0; i < steps; i++) {
+        const t = i / steps;
+        
+        // 1. 先細りとテクスチャ（節）
+        const taper = Math.pow(1 - t, 1.1);
+        const ringFrequency = 12 + (settings.texture * 4);
+        const bump = 1 + Math.sin(t * ringFrequency * Math.PI) * (settings.texture * 0.04) * (1 - t);
+        const r = Math.max(0.01, baseR * taper * bump);
+
+        // 2. ディスク生成（滑らかに繋ぐために高密度化）
+        const discGeo = new THREE.CylinderGeometry(r * 0.99, r, 0.15, 24);
+        const disc = new THREE.Mesh(discGeo, mat);
+        
+        disc.position.copy(currentPos);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), currentDir);
+        disc.quaternion.copy(quaternion);
+
+        // 個体差：各節ごとにランダムな角度の微調整
+        disc.rotateX((Math.random() - 0.5) * 0.05);
+        disc.rotateZ((Math.random() - 0.5) * 0.05);
+        
+        group.add(disc);
+
+        // 3. 次の成長ベクトル（ここが個体差の肝）
+        // settings.bendが大きいほど、ドリフト（迷走）が激しくなる
+        const noise = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.05 * settings.bend,
+            0.02,
+            (Math.random() - 0.5) * 0.05 * settings.bend
+        );
+        
+        // メインの曲がりカーブ
+        const curveVec = new THREE.Vector3(individualDrift + settings.bend * 0.015, 0.1, 0);
+        
+        currentDir.add(noise).add(curveVec).normalize();
+        currentPos.add(currentDir.clone().multiplyScalar(0.12)); // 重なりを深くして隙間を消す
     }
-    return { mesh, curve, baseRadius };
+
+    return { group, points: group.children.map(c => c.position) };
 }
 
 function build() {
-    // 既存の角をクリア
     while(hornGroup.children.length > 0) {
         const c = hornGroup.children[0];
-        c.geometry.dispose();
-        c.material.dispose();
+        c.traverse(node => {
+            if (node.geometry) node.geometry.dispose();
+            if (node.material) node.material.dispose();
+        });
         hornGroup.remove(c);
     }
 
-    // メインの角
-    const main = createHorn();
-    hornGroup.add(main.mesh);
+    // メインの角を生成
+    const main = growHorn(false, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
+    hornGroup.add(main.group);
 
-    // 分岐（1〜5段階）
-    const branchCount = settings.branches - 1; // 1段階なら0個
-    for (let i = 0; i < branchCount; i++) {
-        const t = 0.3 + (i * 0.15) + (Math.random() * 0.1);
-        const spawnPos = main.curve.getPointAt(t);
-        const branch = createHorn(true, spawnPos, null, 0.5);
-        hornGroup.add(branch.mesh);
+    // リアルな分岐：メインの「節」から成長方向に合わせて生やす
+    const branchFactor = settings.branches - 1;
+    if (branchFactor > 0) {
+        for (let i = 0; i < branchFactor; i++) {
+            // 分岐位置をメインの40%〜80%の間にランダムに設定
+            const splitIdx = Math.floor(main.group.children.length * (0.3 + Math.random() * 0.4));
+            const startP = main.group.children[splitIdx].position;
+            
+            // 分岐の方向：メインの方向から大きく外れる（個体差大）
+            const outDir = new THREE.Vector3(
+                1.5 + Math.random(), 
+                0.5 + Math.random(), 
+                (Math.random() - 0.5) * 2
+            ).normalize();
+            
+            const branch = growHorn(true, startP, outDir, 0.55);
+            hornGroup.add(branch.group);
+        }
     }
 
-    // 全体の重心をセンターに
+    // 重心を中心に
     const box = new THREE.Box3().setFromObject(hornGroup);
     const center = box.getCenter(new THREE.Vector3());
-    hornGroup.position.sub(center);
+    hornGroup.position.set(-center.x, -center.y, -center.z);
 }
 
-// --- UI Interaction ---
+// UI Setup
 ['size', 'bend', 'texture', 'branches'].forEach(id => {
     const el = document.getElementById(id);
     el.oninput = (e) => {
         settings[id] = parseInt(e.target.value);
         document.getElementById(`val-${id}`).innerText = settings[id];
-        // 設定変更時は即座に反映
         build();
     };
 });
-
 document.getElementById('color').oninput = (e) => {
     settings.color = e.target.value;
     build();
 };
-
 document.getElementById('generate').onclick = () => build();
 
 window.addEventListener('resize', () => {
@@ -274,16 +231,13 @@ window.addEventListener('resize', () => {
     renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 });
 
-// Initial build
 build();
-
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
-
 </script>
 </body>
 </html>
